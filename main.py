@@ -1,6 +1,7 @@
 import discord
+from discord.ext import commands
 
-client = discord.Client()
+bot = commands.Bot(command_prefix="$")
 
 
 class test_discord():
@@ -10,18 +11,51 @@ class test_discord():
     relaying_prefix = ''
     relaying_suffix = '<@&816054356091994164>'
     relaying_ignore_roles = {
-        816054356091994164
+        #816054356091994164
         }
 
+    command_channels = {
+        'bot-commands',
+    }
+    command_always_accept_from_roles = {
+        816054356091994164
+    }
 
-@client.event
+@bot.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    print('We have logged in as {0.user}'.format(bot))
 
 
-@client.event
+def _validate_command(ctx: commands.Context) -> bool:
+    if ctx.author == bot.user:
+        return False
+
+    if ctx.channel.name in guild_details.command_channels:
+        return True
+
+    for role in ctx.author.roles:
+        if role.id in guild_details.command_always_accept_from_roles:
+            return True
+
+    return False
+
+@bot.command(name='ping')
+async def ping(ctx: commands.Context):
+    if not _validate_command(ctx):
+        return
+
+    await ctx.channel.send("pong")
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        # No need to do anything fancy here
+        return
+    raise error
+
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    if message.author == bot.user:
         return
 
     if message.channel.name in guild_details.relaying_channels:
@@ -30,9 +64,13 @@ async def on_message(message):
             prefix=guild_details.relaying_prefix,
             suffix=guild_details.relaying_suffix)
 
+    try:
+        await bot.process_commands(message)
+    except Exception as exc:
+        breakpoint()
 
 def get_channel(name):
-    channel = discord.utils.get(client.get_all_channels(), name=name)
+    channel = discord.utils.get(bot.get_all_channels(), name=name)
     if not channel:
         raise ValueError(f'Target channel {name} not found.')
     return channel
@@ -86,4 +124,4 @@ if __name__ == '__main__':
     except (OSError, RuntimeError):
         raise RuntimeError(f'No token file or contents found: {token_file}')
 
-    client.run(token)
+    bot.run(token)

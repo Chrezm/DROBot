@@ -137,7 +137,7 @@ if __name__ == '__main__':
     production = False
     if production:
         token_file = '.token'
-        from DRO_discord import DRO_discord
+        from DRO_Discord import DRO_discord
         guild_details = DRO_discord()
     else:
         token_file = 'test.token'

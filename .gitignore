@@ -2,3 +2,5 @@
 test.token
 DRO_Discord.py
 .spyproject
+.vscode
+*.pyc

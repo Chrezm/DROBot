@@ -44,7 +44,12 @@ def _validate_command(ctx: commands.Context) -> bool:
     return False
 
 
-@bot.command(name='ping')
+@bot.command(
+    name='ping',
+    brief='Returns Pong. Used to check if the bot is up and running',
+    help=('Returns Pong. If the bot does not respond, it means it is down or something terrible '
+          'has happened.'),
+)
 async def ping(ctx: commands.Context):
     if not _validate_command(ctx):
         return
@@ -52,7 +57,12 @@ async def ping(ctx: commands.Context):
     await ctx.channel.send('Pong.')
 
 
-@bot.command(name='rpactive')
+@bot.command(
+    name='rpactive',
+    brief='Changes your RP Active status',
+    help=('If you did not have the RP Active role, the bot will give it to you. If you already had '
+          'it, the bot will take it away from you.'),
+)
 async def rpactive(ctx: commands.Context):
     if not _validate_command(ctx):
         return
@@ -134,7 +144,7 @@ async def _relay_message(message, prefix='', suffix=''):
 
 
 if __name__ == '__main__':
-    production = False
+    production = True  # Change to True for use in public servers, False for test server
     if production:
         token_file = '.token'
         from DRO_Discord import DRO_discord

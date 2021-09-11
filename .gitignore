@@ -1,6 +1,7 @@
-.token
-test.token
-DRO_Discord.py
+src/guild_specific/dro.token
+src/guild_specific/test.token
+src/guild_specific/dro.py
 .spyproject
 .vscode
 *.pyc
+*__pycache__

@@ -8,12 +8,12 @@ class Functionality():
     def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
         @bot.event
         async def on_ready():
-            print('We have logged in as {0.user}'.format(bot))
+            print('Logged in as {0.user}'.format(bot))
 
         @bot.event
         async def on_command_error(ctx, error):
             if isinstance(error, commands.CommandNotFound):
-                # No need to do anything fancy here
+                await ctx.send('Unrecognized command.')
                 return
             raise error
 

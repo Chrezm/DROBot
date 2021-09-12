@@ -1,6 +1,7 @@
 src/guild_specific/dro.token
-src/guild_specific/test.token
 src/guild_specific/dro.py
+src/guild_specific/test.token
+src/guild_specific/test.py
 .spyproject
 .vscode
 *.pyc

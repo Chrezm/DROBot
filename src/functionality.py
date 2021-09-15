@@ -62,15 +62,14 @@ def rp_id_check():
     return rp_list
 
 
-# This is to start the checks and if said file does not exist, will create one.
-ban_id_check()
-rp_id_check()
-
-
 class Functionality:
     def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
         @bot.event
         async def on_ready():
+            # This is to start the checks and if said file does not exist, will create one.
+            ban_id_check()
+            rp_id_check()
+
             # This is to begin the task loop.
             second_passing.start()
             print('Logged in as {0.user}'.format(bot))
@@ -245,10 +244,10 @@ class Functionality:
                 answer = round(time.time()) - answer
 
                 if answer >= 0:
-                    if bool(int(user["ended"])) is True:
+                    if user["ended"] == "1":
                         update_dict = user
 
-                    if bool(int(user["ended"])) is False:
+                    if user["ended"] == "0":
                         update_dict = {"discord_id": user["discord_id"], "discord_name": user["discord_name"], "ban_timestamp": user["ban_timestamp"],
                                        "ban_length": user["ban_length"], "reason": user["reason"], "ended": 1}
 
@@ -292,10 +291,10 @@ class Functionality:
                 answer = round(time.time()) - int(user["rp_start_date"])
 
                 if answer >= 0:
-                    if bool(int(user["ongoing"])) is True:
+                    if user["ongoing"] == "1":
                         update_dict = user
 
-                    if bool(int(user["ongoing"])) is False:
+                    if user["ongoing"] == "0":
                         update_dict = {"serial_code": user['serial_code'], "approved": user['approved'], "approved_id": user['approved_id'], "local": user['local'],
                                        "rp_name": user['rp_name'], "main_host": user['main_host'], "main_host_id": user['main_host_id'], "rp_start_date": user['rp_start_date'],
                                        "rp_start_time": user['rp_start_time'], "rp_duration": user['rp_duration'], "doc": user['doc'],
@@ -323,7 +322,7 @@ class Functionality:
                 0: [0, 0, 0],  # Close Sign Ups
                 1: [1, 0, 0],  # Open Sign Ups
                 2: [0, 1, 0],  # Ongoing RP
-                3: [0, 0, 1]   # Ends RP
+                3: [0, 0, 1]  # Ends RP
             }
 
             rp_list = rp_id_check()
@@ -544,7 +543,6 @@ class Functionality:
                                                   f'**Reason**: {user["reason"]}\n'
                                                   f'**Ban Ended**: {user["ended"]}',
 
-
                                       colour=discord.Color.dark_blue())
                 embed.set_thumbnail(url=ctx.author.avatar_url)
                 embed.set_footer(text=ctx.author)
@@ -653,11 +651,11 @@ class Functionality:
 
             for rp in rp_list:
                 local_note = "in DRO servers"
-                if bool(int(rp['local'])) is False:
+                if rp["local"] == "0":
                     local_note = "outside of DRO servers"
 
                 ongoing_note = "currently ongoing"
-                if bool(int(rp['ongoing'])) is False:
+                if rp["ongoing"] == "0":
                     ongoing_note = "still on its sign up phase"
 
                 if serial_code == rp["serial_code"]:
@@ -709,6 +707,7 @@ class Functionality:
 
             profile = rp_profile_check(_id)
             embed = None
+            bool_string = {"0": False, "1": True}
 
             if not profile:
                 return await ctx.send("`That Serial Code does not exist in the database.`")
@@ -723,10 +722,10 @@ class Functionality:
                                                   f'**RP First Session Date**: {date_}\n'
                                                   f'**RP Start Time**: {rp["rp_start_time"]}\n'
                                                   f'**RP Length in Hours**: {rp["rp_duration"]}\n'
-                                                  f'**Local ODROS**: {bool(int(rp["local"]))}\n'
-                                                  f'**Sign Up Open**: {bool(int(rp["sign_up"]))}\n'
-                                                  f'**Ongoing**: {bool(int(rp["ongoing"]))}\n'
-                                                  f'**Ended**: {bool(int(rp["ended"]))}\n'
+                                                  f'**Local ODROS**: {bool_string[rp["local"]]}\n'
+                                                  f'**Sign Up Open**: {bool_string[rp["sign_up"]]}\n'
+                                                  f'**Ongoing**: {bool_string[rp["ongoing"]]}\n'
+                                                  f'**Ended**: {bool_string[rp["ended"]]}\n'
                                                   f'**Document**: {rp["doc"]}',
 
                                       colour=discord.Color.dark_blue())
@@ -763,6 +762,8 @@ class Functionality:
                 3: rp_profile_check_all(value)
             }
 
+            bool_string = {"0": False, "1": True}
+
             try:
                 profile = rp_dict[value]
             except KeyError:
@@ -781,10 +782,10 @@ class Functionality:
                                                   f'**RP First Session Date**: {date_}\n'
                                                   f'**RP Start Time**: {rp["rp_start_time"]}\n'
                                                   f'**RP Length in Hours**: {rp["rp_duration"]}\n'
-                                                  f'**Local ODROS**: {bool(int(rp["local"]))}\n'
-                                                  f'**Sign Up Open**: {bool(int(rp["sign_up"]))}\n'
-                                                  f'**Ongoing**: {bool(int(rp["ongoing"]))}\n'
-                                                  f'**Ended**: {bool(int(rp["ended"]))}\n'
+                                                  f'**Local ODROS**: {bool_string[rp["local"]]}\n'
+                                                  f'**Sign Up Open**: {bool_string[rp["sign_up"]]}\n'
+                                                  f'**Ongoing**: {bool_string[rp["ongoing"]]}\n'
+                                                  f'**Ended**: {bool_string[rp["ended"]]}\n'
                                                   f'**Document**: {rp["doc"]}',
 
                                       colour=discord.Color.dark_blue())
@@ -902,7 +903,11 @@ class Functionality:
 
             try:
                 seconds = int(seconds)
-                irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))
+                try:
+                    irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))
+                except OSError:
+                    return await ctx.send("`Integer cannot be over 2,147,483,647`")
+
                 title_embed = f'It is {irl_time} UTC'
             except ValueError:
                 rp_list = rp_id_check()
@@ -910,6 +915,9 @@ class Functionality:
                     if seconds == rp["serial_code"]:
                         irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(rp["rp_start_date"])))
                         title_embed = f'RP Hosted at {irl_time} UTC'
+
+                if not irl_time:
+                    return await ctx.send("`Invalid RP Serial Code`")
 
             other_timezones = str(irl_time)
             other_timezones = other_timezones.split(" ")
@@ -953,13 +961,21 @@ class Functionality:
                   '\nExample: $utc 1'
                   '\n\n<seconds> is an optional field; it is an epoch/unix second argument and MUST be an integer.')
         )
-        async def utc(ctx: commands.Context, seconds: int = None):
+        async def utc(ctx: commands.Context, seconds=None):
             if not _validate_command(ctx):
                 return
 
-            irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))
             if not seconds:
-                irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(round(time.time())))
+                seconds = round(time.time())
+
+            try:
+                seconds = int(seconds)
+                try:
+                    irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))
+                except OSError:
+                    return await ctx.send("`Integer cannot be over 2,147,483,647`")
+            except ValueError:
+                return await ctx.send("`You can only input integers as an argument.`")
 
             other_timezones = str(irl_time)
             other_timezones = other_timezones.split(" ")

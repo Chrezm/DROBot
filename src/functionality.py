@@ -80,7 +80,7 @@ class Functionality:
         async def second_passing():
             print(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(round(time.time()))))
             update_rp_list()
-            update_ban_list()
+            await inform_update_list()
 
         # This will execute before the function <second_passing> will run.
         @second_passing.before_loop
@@ -268,6 +268,20 @@ class Functionality:
                     writer.writerow(update)
 
             return updated_ban_list, inform_ban_list
+
+        async def inform_update_list():
+            updated_list = update_ban_list()[1]
+
+            if updated_list:
+                for user in updated_list:
+                    answer = int(user["ban_timestamp"]) + int(user["ban_length"])
+                    answer = round(time.time()) - answer
+
+                    if answer >= 0:
+                        target = await bot.fetch_user(int(user['discord_id']))
+                        await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
+
+            return
 
         def update_rp_list():
             rp_list = rp_id_check()

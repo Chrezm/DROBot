@@ -5,14 +5,13 @@ import csv
 import string
 import random
 import asyncio
-from discord.ext import commands
 from discord.ext import commands, tasks
 
 from typing import Dict
 
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
-def code_creator():
+def create_code():
     lowercase_letter, uppercase_letter, digits = string.ascii_lowercase, string.ascii_uppercase, str(string.digits)
     code = ''.join(random.sample(lowercase_letter + uppercase_letter + digits, 12))
     return code
@@ -36,7 +35,6 @@ def ban_id_check():
             fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerow({"discord_id": 0, "discord_name": "Example", "ban_timestamp": 42069, "ban_length": 69420, "reason": "he called me cringe", "ended": 1})
 
     return ban_list
 
@@ -60,9 +58,6 @@ def rp_id_check():
                           "rp_start_date", "rp_start_time", "rp_duration", "doc", "sign_up", "ongoing", "ended"]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerow({"serial_code": code_creator(), "approved": "MODERATOR", "approved_id": 420, "local": 1, "rp_name": "Love Hotel is NOT REAL", "main_host": "Deez",
-                             "main_host_id": 0, "rp_start_date": 0, "rp_start_time": 10, "rp_duration": 5, "doc": "https://www.youtube.com/watch?v=YoU3r6ZK8xQ",
-                             "sign_up": 0, "ongoing": 0, "ended": 1})
 
     return rp_list
 
@@ -114,13 +109,10 @@ class Functionality:
 
             if message.channel.name in guild_details.relaying_channels:
                 # Right here, it will delete the message and notify the user who tried using the bot that they are banned.
-                # The ban_id_[1:] is to skip the example ID.
-                for user in ban_id_[1:]:
-                    bool_ = int(user["ended"])
-                    bool_ = bool(bool_)
-                    if message.author.id == user["discord_id"] and bool_ is False:
+                for user in ban_id_:
+                    if message.author.id == user["discord_id"] and not int(user["ended"]):
                         await message.delete(message)
-                        return await message.author.send("**You cannot access the bot due to your ban.**")
+                        return await message.author.send("**You cannot use the bot due to your ban.**")
 
                 await _relay_message(
                     message,
@@ -190,6 +182,11 @@ class Functionality:
             answer = second / 86400
             return round(answer)
 
+        # Converts Seconds to Hours
+        def second_to_hour(second: int):
+            answer = second / 3600
+            return round(answer)
+
         def ban_profile_check(_id):
             ban_list = ban_id_check()
             found = []
@@ -197,6 +194,16 @@ class Functionality:
             for user in ban_list:
                 if str(_id) == user["discord_id"]:
                     found.append(user)
+
+            return found
+
+        def ban_profile_check_all():
+
+            ban_list = ban_id_check()
+            found = []
+
+            for ban in ban_list:
+                found.append(ban)
 
             return found
 
@@ -247,7 +254,7 @@ class Functionality:
 
                         inform_ban_list.append(update_dict)
 
-                elif answer < 0:
+                else:
                     update_dict = user
 
                 updated_ban_list.append(update_dict)
@@ -280,7 +287,7 @@ class Functionality:
                                        "rp_start_time": user['rp_start_time'], "rp_duration": user['rp_duration'], "doc": user['doc'],
                                        "sign_up": 0, "ongoing": 1, "ended": 0}
 
-                elif answer < 0:
+                else:
                     update_dict = user
 
                 updated_rp_list.append(update_dict)
@@ -355,7 +362,7 @@ class Functionality:
             found = []
 
             for rp in rp_list:
-                if str(1) == rp["sign_up"]:
+                if rp["sign_up"] == "1":
                     found.append(rp)
 
             return found
@@ -368,7 +375,7 @@ class Functionality:
             found = []
 
             for rp in rp_list:
-                if str(1) == rp["ongoing"]:
+                if rp["ongoing"] == "1":
                     found.append(rp)
 
             return found
@@ -381,7 +388,7 @@ class Functionality:
             found = []
 
             for rp in rp_list:
-                if str(1) == rp["ended"]:
+                if rp["ended"] == "1":
                     found.append(rp)
 
             return found
@@ -441,11 +448,8 @@ class Functionality:
             except discord.NotFound as p:
                 return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the server.**")
 
-            for dict_ban in ban_ids[1:]:
-                bool_ = int(dict_ban["ended"])
-                bool_ = bool(bool_)
-
-                if str(user_id) == str(dict_ban["discord_id"]) and bool_ is False:
+            for dict_ban in ban_ids:
+                if str(user_id) == str(dict_ban["discord_id"]) and not int(dict_ban["ended"]):
                     return await ctx.send(f"**{target.name} is already in the list and his ban has not ended.**")
 
             with open("ban_ids.csv", "a") as file_:
@@ -453,10 +457,17 @@ class Functionality:
                 writer = csv.DictWriter(file_, fieldnames=fieldnames)
                 writer.writerow({"discord_id": user_id, "discord_name": target.name, "ban_timestamp": round(time.time()), "ban_length": ban_length, "reason": reason, "ended": 0})
 
-            days = second_to_day(ban_length)
-            await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from accessing the Server Bot for {days} days.**'
+            if ban_length < 86400:
+                days = second_to_hour(ban_length)
+                word_ = f"{days} hours"
+
+            else:
+                days = second_to_day(ban_length)
+                word_ = f"{days} days"
+
+            await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the Server Bot for {word_}.**'
                                    f'\n`Reason: {reason}`')
-            await target.send(f'**You are now banned from accessing the Server Bot for {days} days.**'
+            await target.send(f'**You are now banned from using the Server Bot for {word_}**'
                               f'\n`Reason: {reason}`')
 
         @bot.command(
@@ -482,7 +493,7 @@ class Functionality:
 
             for user in updated_list:
                 target = await bot.fetch_user(int(user['discord_id']))
-                await target.send(f'**You are now unbanned from accessing the Server Bot. Please do not make the same offense again.**')
+                await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
 
             return await ctx.send("**Updated! Those whose ban is revoked will be notified.**")
 
@@ -533,6 +544,43 @@ class Functionality:
             return
 
         @bot.command(
+            name='ban_profile_all',
+            brief='Returns all ban profiles from all banned or previously banned users.',
+            help=('Returns all ban profiles from all banned or previously banned users. An argument is not necessary.'
+                  '\nArguments: $ban_profile_all'
+                  '\nExample: $ban_profile_all')
+        )
+        async def ban_profile_all(ctx: commands.Context):
+            if not _validate_command(ctx):
+                return
+
+            if not admin_check(ctx):
+                return await ctx.send("`Insufficient Privileges.`")
+
+            profile = ban_profile_check_all()
+
+            if not profile:
+                return await ctx.send("`There are no bans in the Database.`")
+
+            for user in profile:
+                date_ = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(user["ban_timestamp"])))
+                embed = discord.Embed(title=f'Ban Profile : {user["discord_name"]}',
+                                      description=f'**Discord Name**: {user["discord_name"]}\n'
+                                                  f'**Discord ID**: {user["discord_id"]}\n'
+                                                  f'**Ban Date**: {date_}\n'
+                                                  f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                                                  f'**Reason**: {user["reason"]}\n'
+                                                  f'**Ban Ended**: {user["ended"]}',
+
+                                      colour=discord.Color.dark_blue())
+                embed.set_thumbnail(url=ctx.author.avatar_url)
+                embed.set_footer(text=ctx.author)
+
+                await ctx.send(embed=embed)
+
+            return
+
+        @bot.command(
             name='ban_list_update',
             brief='Forces the ban_list to update.',
             help=('Forces the ban_list to update. You do not need any arguments to proceed.'
@@ -555,7 +603,7 @@ class Functionality:
 
                     if answer >= 0:
                         target = await bot.fetch_user(int(user['discord_id']))
-                        await target.send(f'**You are now unbanned from accessing the Server Bot. Please do not make the same offense again.**')
+                        await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
 
             await ctx.send("**Updated! Those whose ban is over will be notified.**")
 
@@ -571,7 +619,7 @@ class Functionality:
                   "\n<rp_start_date> is an epoch number. Use https://www.epochconverter.com"
                   "\n<rp_duration> is an integer. In hours, how long the Roleplay is."
                   "\n<serial_code> is an optional field, but can be customized. It is used to find your RP in [rp_profile] and store in the database."
-                  "\n<local> is an optional field, can only be 0 or 1. --0: False (Hosted outside DRO) | 1: True (Hosted within DRO)--"
+                  "\n<local> is an optional field, can only be 0 or 1. --0: False (Hosted outside ODROS) | 1: True (Hosted within ODROS)--"
                   "\n<sign_up> is an optional field, can only be 0 or 1. --0: False (Sign ups are closed) | 1: True (Sign ups are open)--"
                   "\n<ongoing> is an optional field, can only be 0 or 1. --0: False (RP is not ongoing) | 1: True (RP is ongoing)--"
                   "\n<ended> is an optional field, can only be 0 or 1. --0: False (RP has not ended) | 1: True (RP ended)--"),
@@ -587,12 +635,9 @@ class Functionality:
             rp_list = rp_id_check()
 
             if not serial_code:
-                serial_code = code_creator()
+                serial_code = create_code()
 
-            for rp in rp_list[1:]:
-                bool_ = int(rp["ended"])
-                bool_ = bool(bool_)
-
+            for rp in rp_list:
                 local_note = "in DRO servers"
                 if bool(int(rp['local'])) is False:
                     local_note = "outside of DRO servers"
@@ -604,7 +649,7 @@ class Functionality:
                 if serial_code == rp["serial_code"]:
                     return await ctx.send(f"**Serial code {rp['serial_code']} was already used. RP Name: `{rp['rp_name']}`"
                                           f"\n**Hosted by {rp['main_host']}. Please use a different Serial Code.**")
-                if rp_name.lower() == str(rp["rp_name"]).lower() and bool_ is False:
+                if rp_name.lower() == str(rp["rp_name"]).lower() and not int(rp["ended"]):
                     return await ctx.send(f"**{rp['rp_name']} is already in the Database and {ongoing_note} under the serial code:** `{rp['serial_code']}`**"
                                           f"\n**Hosted by {rp['main_host']} {local_note}.**")
 
@@ -642,7 +687,7 @@ class Functionality:
             help=('Returns a profile of an RP. There is only one required argument.'
                   '\nArguments: $rp_profile <_id>'
                   '\nExample: $rp_profile HN'
-                  '\n<_id> is the Serial Code of said RP. It is case sensitive, so make sure it is correct.')
+                  '\n\n<_id> is the Serial Code of said RP. It is case sensitive, so make sure it is correct.')
         )
         async def rp_profile(ctx: commands.Context, _id):
             if not _validate_command(ctx):
@@ -664,7 +709,7 @@ class Functionality:
                                                   f'**RP First Session Date**: {date_}\n'
                                                   f'**RP Start Time**: {rp["rp_start_time"]}\n'
                                                   f'**RP Length in Hours**: {rp["rp_duration"]}\n'
-                                                  f'**Local DRO**: {bool(int(rp["local"]))}\n'
+                                                  f'**Local ODROS**: {bool(int(rp["local"]))}\n'
                                                   f'**Sign Up Open**: {bool(int(rp["sign_up"]))}\n'
                                                   f'**Ongoing**: {bool(int(rp["ongoing"]))}\n'
                                                   f'**Ended**: {bool(int(rp["ended"]))}\n'
@@ -682,7 +727,7 @@ class Functionality:
             help=('Returns a list of RP profiles that are filtered based on value of 0-3'
                   '\nArguments: $rp_profile_filter <value>'
                   '\nExample: $rp_profile_filter 0'
-                  '\n<value> is the code for filter action.'
+                  '\n\n<value> is the code for filter action.'
                   '\n0 - Filters RP profiles whose Sign Ups are Open.'
                   '\n1 - Filters RP profiles which are currently Ongoing.'
                   '\n2 - Filters RP Profiles which have ended.'
@@ -704,7 +749,10 @@ class Functionality:
                 3: rp_profile_check_all(value)
             }
 
-            profile = rp_dict[value]
+            try:
+                profile = rp_dict[value]
+            except KeyError:
+                return await ctx.send("`Input a valid value from 0-3 only.`")
 
             if not profile:
                 return await ctx.send("`Unfortunately, there is none in the database as of yet.`")
@@ -719,7 +767,7 @@ class Functionality:
                                                   f'**RP First Session Date**: {date_}\n'
                                                   f'**RP Start Time**: {rp["rp_start_time"]}\n'
                                                   f'**RP Length in Hours**: {rp["rp_duration"]}\n'
-                                                  f'**Local DRO**: {bool(int(rp["local"]))}\n'
+                                                  f'**Local ODROS**: {bool(int(rp["local"]))}\n'
                                                   f'**Sign Up Open**: {bool(int(rp["sign_up"]))}\n'
                                                   f'**Ongoing**: {bool(int(rp["ongoing"]))}\n'
                                                   f'**Ended**: {bool(int(rp["ended"]))}\n'
@@ -739,7 +787,7 @@ class Functionality:
             help=('Changes RP status based on the value of 0-3'
                   '\nArguments: $rp_change_status <_id> <value>'
                   '\nExample: $rp_change_status HN 0'
-                  '\n<_id> is the Serial Code for the RP; the one you are planning to change.'
+                  '\n\n<_id> is the Serial Code for the RP; the one you are planning to change.'
                   '\n<value> is the code for status change action.'
                   '\n0 - Closes Sign Ups.'
                   '\n1 - Opens Sign Ups.'
@@ -824,7 +872,7 @@ class Functionality:
             help=('Lists the time based on <important> timezones. Date format: YYYY-MM-DD.'
                   '\nArguments: $timezone <seconds>'
                   '\nExample: $timezone HN'
-                  '\n<seconds> is an optional field; it is an epoch/unix second argument. It can also be an RP Serial Code.'
+                  '\n\n<seconds> is an optional field; it is an epoch/unix second argument. It can also be an RP Serial Code.'
                   "\nInputting <seconds> as an RP Serial Code will return you said RP's First Session Date."
                   )
         )
@@ -836,8 +884,7 @@ class Functionality:
             title_embed = None
 
             if not seconds:
-                irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(round(time.time())))
-                title_embed = f'It is {irl_time} UTC'
+                seconds = round(time.time())
 
             try:
                 seconds = int(seconds)
@@ -847,10 +894,8 @@ class Functionality:
                 rp_list = rp_id_check()
                 for rp in rp_list:
                     if seconds == rp["serial_code"]:
-                        irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(rp["rp_start_time"])))
+                        irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(rp["rp_start_date"])))
                         title_embed = f'RP Hosted at {irl_time} UTC'
-            except TypeError as p:
-                raise p
 
             other_timezones = str(irl_time)
             other_timezones = other_timezones.split(" ")
@@ -892,7 +937,7 @@ class Functionality:
                   'you will get said time instead. Date format: YYYY-MM-DD.'
                   '\nArguments: $utc <seconds>'
                   '\nExample: $utc 1'
-                  '\n<seconds> is an optional field; it is an epoch/unix second argument and MUST be an integer.')
+                  '\n\n<seconds> is an optional field; it is an epoch/unix second argument and MUST be an integer.')
         )
         async def utc(ctx: commands.Context, seconds: int = None):
             if not _validate_command(ctx):

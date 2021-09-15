@@ -90,11 +90,9 @@ class Functionality:
         async def on_command_error(ctx, error):
             if isinstance(error, commands.CommandNotFound):
                 await ctx.send('`Unrecognized command.`')
-                return
 
             if isinstance(error, commands.MissingRequiredArgument):
                 await ctx.send("`Please input the required arguments.`")
-                return
 
             raise error
 
@@ -442,11 +440,10 @@ class Functionality:
             name='ban_id',
             brief='Bans a Discord User from using the Bot.',
             help=('Bans a Discord User from using the Bot. There are multiple arguments needed to be filled.'
-                  '\nArguments: $ban_id <discord_id> <ban_length : seconds> <reason> '
-                  '\nExample: $ban_id 332456386946531328 259200 "There must be a open and close quotes for reason."'),
-            hidden=True,
+                  '\nArguments: $ban_id <user_id> <ban_length : seconds> <reason> '
+                  '\nExample: $ban_id 332456386946531328 259200 "There must be a open and close quotes for reason."')
         )
-        async def ban_id(ctx: commands.Context, user_id: int, ban_length: int = 259200, reason: str = "Unstated Reason"):
+        async def ban_id(ctx: commands.Context, user_id: int, ban_length: int = 259200, reason="Unstated Reason"):
             if not _validate_command(ctx):
                 return
 
@@ -457,7 +454,6 @@ class Functionality:
 
             try:
                 target = await bot.fetch_user(user_id)
-                print(target.name)
             except discord.NotFound as p:
                 return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the server.**")
 
@@ -520,7 +516,7 @@ class Functionality:
                   "\nFalse only returns the user's recent ban."
                   "\nTrue returns all of the user's bans."),
         )
-        async def ban_profile(ctx: commands.Context, _id: int, _all: bool = False):
+        async def ban_profile(ctx: commands.Context, _id: int, _all=False):
             if not _validate_command(ctx):
                 return
 
@@ -547,10 +543,10 @@ class Functionality:
                 embed.set_thumbnail(url=ctx.author.avatar_url)
                 embed.set_footer(text=ctx.author)
 
-                if _all is True:
+                if _all:
                     await ctx.send(embed=embed)
 
-            if _all is False:
+            if not _all:
                 await ctx.send(embed=embed)
 
             return
@@ -646,6 +642,15 @@ class Functionality:
 
             rp_list = rp_id_check()
 
+            arg_check = [local, sign_up, ongoing, ended]
+            for arg in arg_check:
+                try:
+                    arg = int(arg)
+                    if arg not in [0, 1]:
+                        return await ctx.send(f"`<Local>, <Sign Up>, <Ongoing>, and <Ended> Arguments must be either 0 or 1.`")
+                except ValueError:
+                    return await ctx.send(f"`Please input a valid integer. {arg} is not valid.`")
+
             if not serial_code:
                 serial_code = create_code()
 
@@ -666,17 +671,16 @@ class Functionality:
                                           f"\n**Hosted by {rp['main_host']} {local_note}.**")
 
             try:
-                target = await bot.fetch_user(main_host_id)
-                print(target.name)
+                target = await bot.fetch_user(int(main_host_id))
             except discord.NotFound as p:
                 return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the server.**")
 
-            irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(rp_start_date))
+            irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(rp_start_date)))
             other_timezones = str(irl_time)
             other_timezones = other_timezones.split(" ")
             hour_split = other_timezones[1].split(":")
 
-            noted_time = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(rp_start_date))
+            noted_time = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(rp_start_date)))
 
             with open("rp_collection.csv", "a") as file:
                 fieldnames = ["serial_code", "approved", "approved_id", "local", "rp_name", "main_host",
@@ -706,6 +710,7 @@ class Functionality:
                 return
 
             profile = rp_profile_check(_id)
+
             embed = None
             bool_string = {"0": False, "1": True}
 
@@ -746,7 +751,7 @@ class Functionality:
                   '\n2 - Filters RP Profiles which have ended.'
                   '\n3 - Does not filter and returns all RP profiles.')
         )
-        async def rp_profile_filter(ctx: commands.Context, value: int = 0):
+        async def rp_profile_filter(ctx: commands.Context, value="0"):
             if not _validate_command(ctx):
                 return
 
@@ -809,9 +814,21 @@ class Functionality:
                   '\n2 - Labels the RP as Ongoing.'
                   '\n3 - Ending the RP.')
         )
-        async def rp_change_status(ctx: commands.Context, _id, value: int = 0):
+        async def rp_change_status(ctx: commands.Context, _id, value="0"):
             if not _validate_command(ctx):
                 return
+
+            change_dict = {
+                0: "closing sign ups",
+                1: "opening sign ups",
+                2: "labelling the RP as ongoing",
+                3: "ending the RP"
+            }
+
+            try:
+                value = int(value)
+            except ValueError:
+                return await ctx.send("`Input a valid value from 0-3 only.`")
 
             string_inform = None
 
@@ -823,14 +840,11 @@ class Functionality:
             if not initial_check:
                 return await ctx.send('`Invalid RP Serial Code, cannot update.`')
 
-            change_dict = {
-                0: "closing sign ups",
-                1: "opening sign ups",
-                2: "labelling the RP as ongoing",
-                3: "ending the RP"
-            }
+            try:
+                update = update_rp_list_choice(_id, value)
+            except KeyError:
+                return await ctx.send("`Input a valid value from 0-3 only.`")
 
-            update = update_rp_list_choice(_id, value)
             update = update[1]
 
             for rp in update:
@@ -1014,3 +1028,29 @@ class Functionality:
             embed.set_footer(text=ctx.author)
 
             await ctx.send(embed=embed)
+
+        # -- Command Error Area -- #
+
+        @ban_profile.error
+        async def ban_profile_error(ctx: commands.Context, error):
+            if isinstance(error, commands.BadBoolArgument):
+                return await ctx.send("`Please input <_all> as either 0, 1 or False, True respectively.`")
+
+            if isinstance(error, commands.BadArgument):
+                return await ctx.send("`Please input <_id> as an integer, their Discord ID.`")
+
+        @add_roleplay.error
+        async def add_roleplay_error(ctx: commands.Context, error):
+            if isinstance(error, commands.BadArgument):
+                return await ctx.send("`Please input <main_host_id>, <rp_start_date>, <rp_duration>, <local>, "
+                                      "<sign_up>, <ongoing>, and <ended> as integers.`")
+
+        @ban_id.error
+        async def ban_id_error(ctx: commands.Context, error):
+            if isinstance(error, commands.BadArgument):
+                return await ctx.send("`Please input <user_id> <ban_length> as integers.`")
+
+        @unban.error
+        async def unban_error(ctx: commands.Context, error):
+            if isinstance(error, commands.BadArgument):
+                return await ctx.send("`Please input <user_id> as integers.`")

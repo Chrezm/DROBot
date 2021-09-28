@@ -167,6 +167,12 @@ class Functionality:
         # Checks Admin Status
         def admin_check(ctx):
             admin_roles = [role for role in ctx.guild.roles if role.permissions.administrator]
+            user_roles = ctx.author.roles
+            dro_bot_maintainer_role = ctx.guild.get_role(892524724230434826)
+
+            for role in user_roles:
+                if role == dro_bot_maintainer_role:
+                    return True
 
             for admin_role in admin_roles:
                 if admin_role in ctx.author.roles:

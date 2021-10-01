@@ -6,48 +6,16 @@ from discord.ext import commands, tasks
 
 from typing import Dict, List
 
+from src import bans
 from src import roles
 from src import roleplays
-
-
-# This is the initial check for ban_ids.csv and obtaining its data.
-def ban_id_check():
-    ban_list = None
-    try:
-        with open("ban_ids.csv", "r+", newline="") as file:
-            reader = csv.DictReader(file)
-            ban_list = []
-            for x in reader:
-                ban_list.append(x)
-
-            return ban_list
-
-    except FileNotFoundError:
-        with open("ban_ids.csv", "w") as file:
-            print("ban_ids.csv does not exist; the bot will now create one...")
-            fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
-
-    return ban_list
-
-
-# Converts Seconds to Days
-def second_to_day(second: int) -> int:
-    answer = second / 86400
-    return round(answer)
-
-# Converts Seconds to Hours
-def second_to_hour(second: int) -> int:
-    answer = second / 3600
-    return round(answer)
 
 class Functionality:
     def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
         @bot.event
         async def on_ready():
             # This is to start the checks and if said file does not exist, will create one.
-            ban_id_check()
+            bans.ban_id_check()
             roleplays.rp_id_check()
 
             # This is to begin the task loop.
@@ -58,7 +26,7 @@ class Functionality:
         @tasks.loop(seconds=600.0)
         async def second_passing():
             roleplays.update_rp_list()
-            await inform_update_list()
+            await bans.inform_update_list(bot)
 
         # This will execute before the function <second_passing> will run.
         @second_passing.before_loop
@@ -78,7 +46,7 @@ class Functionality:
         @bot.event
         async def on_message(message):
             # Looks through the ban_id.csv
-            ban_id_ = ban_id_check()
+            ban_id_ = bans.ban_id_check()
 
             if message.author == bot.user:
                 return
@@ -162,119 +130,6 @@ class Functionality:
 
             return False
 
-        def _browse_ban_profile(user_id: int = None) -> List:
-            ban_list = ban_id_check()
-            found = []
-
-            for user in ban_list:
-                if user_id is None or user['discord_id'] == str(user_id):
-                    found.append(user)
-
-            return found
-
-        def update_unban(_id):
-            ban_ids = ban_id_check()
-            updated_ban_list = list()
-            inform_ban_list = list()  # This is to inform players when their ban is over.
-
-            for user in ban_ids:
-                if str(_id) == user["discord_id"]:
-                    update_dict = {
-                        "discord_id": user["discord_id"],
-                        "discord_name": user["discord_name"],
-                        "ban_timestamp": user["ban_timestamp"],
-                        "ban_length": user["ban_length"],
-                        "reason": user["reason"],
-                        "ended": 1
-                        }
-                    inform_ban_list.append(update_dict)
-
-                else:
-                    update_dict = user
-
-                updated_ban_list.append(update_dict)
-
-            with open("ban_ids.csv", "w+") as file:
-                fieldnames = [
-                    "discord_id",
-                    "discord_name",
-                    "ban_timestamp",
-                    "ban_length",
-                    "reason",
-                    "ended"
-                    ]
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()
-
-                for update in updated_ban_list:
-                    writer.writerow(update)
-
-            return updated_ban_list, inform_ban_list
-
-        def update_ban_list():
-            ban_ids = ban_id_check()
-            updated_ban_list = list()
-            inform_ban_list = list()  # This is to inform players when their ban is over.
-            update_dict = None
-
-            for user in ban_ids:
-                answer = int(user["ban_timestamp"]) + int(user["ban_length"])
-                answer = round(time.time()) - answer
-
-                if answer >= 0:
-                    if user["ended"] == "1":
-                        update_dict = user
-
-                    if user["ended"] == "0":
-                        update_dict = {
-                            "discord_id": user["discord_id"],
-                            "discord_name": user["discord_name"],
-                            "ban_timestamp": user["ban_timestamp"],
-                            "ban_length": user["ban_length"],
-                            "reason": user["reason"],
-                            "ended": 1
-                            }
-
-                        inform_ban_list.append(update_dict)
-
-                else:
-                    update_dict = user
-
-                updated_ban_list.append(update_dict)
-
-            with open("ban_ids.csv", "w+") as file:
-                fieldnames = [
-                    "discord_id",
-                    "discord_name",
-                    "ban_timestamp",
-                    "ban_length",
-                    "reason",
-                    "ended"
-                    ]
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()
-
-                for update in updated_ban_list:
-                    writer.writerow(update)
-
-            return updated_ban_list, inform_ban_list
-
-        async def inform_update_list():
-            updated_list = update_ban_list()[1]
-
-            if updated_list:
-                for user in updated_list:
-                    answer = int(user["ban_timestamp"]) + int(user["ban_length"])
-                    answer = round(time.time()) - answer
-
-                    if answer >= 0:
-                        target = await bot.fetch_user(int(user['discord_id']))
-                        await target.send("**You are now unbanned from using the Server Bot. "
-                                          "Please do not commit the same offense again.**")
-
-            return
-
-
         def timezone_time_check(hour_change: int, inc_time: int):
             hour_change = hour_change + inc_time
 
@@ -312,51 +167,8 @@ class Functionality:
             if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            ban_ids = ban_id_check()
-
-            try:
-                target = await bot.fetch_user(user_id)
-            except discord.NotFound as p:
-                return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the "
-                                      "server.**")
-
-            for dict_ban in ban_ids:
-                if str(user_id) == str(dict_ban["discord_id"]) and not int(dict_ban["ended"]):
-                    return await ctx.send(f"**{target.name} is already in the list and his ban has "
-                                          "not ended.**")
-
-            with open("ban_ids.csv", "a") as file_:
-                fieldnames = [
-                    "discord_id",
-                    "discord_name",
-                    "ban_timestamp",
-                    "ban_length",
-                    "reason",
-                    "ended"
-                    ]
-                writer = csv.DictWriter(file_, fieldnames=fieldnames)
-                writer.writerow({
-                    "discord_id": user_id,
-                    "discord_name": target.name,
-                    "ban_timestamp": round(time.time()),
-                    "ban_length": ban_length,
-                    "reason": reason,
-                    "ended": 0
-                    })
-
-            if ban_length < 86400:
-                days = second_to_hour(ban_length)
-                word_ = f"{days} hours"
-
-            else:
-                days = second_to_day(ban_length)
-                word_ = f"{days} days"
-
-            await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the '
-                                   f'Server Bot for {word_}.**'
-                                   f'\n`Reason: {reason}`')
-            await target.send(f'**You are now banned from using the Server Bot for {word_}**'
-                              f'\n`Reason: {reason}`')
+            await bans.command_ban_id(bot, guild_details, ctx, user_id, ban_length=ban_length,
+                                      reason=reason)
 
         @bot.command(
             name='unban',
@@ -373,19 +185,7 @@ class Functionality:
             if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            initial_check = _browse_ban_profile(user_id=_id)
-            if not initial_check:
-                return await ctx.send("`Invalid Discord ID.`")
-
-            updated_list = update_unban(_id)
-            updated_list = updated_list[1]
-
-            for user in updated_list:
-                target = await bot.fetch_user(int(user['discord_id']))
-                await target.send('**You are now unbanned from using the Server Bot. Please do not '
-                                  'commit the same offense again.**')
-
-            return await ctx.send("**Updated! Those whose ban is revoked will be notified.**")
+            await bans.unban(bot, guild_details, ctx, _id)
 
         @bot.command(
             name='ban_profile',
@@ -405,35 +205,7 @@ class Functionality:
             if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = _browse_ban_profile(user_id=_id)
-            embed = None
-
-            if not profile:
-                return await ctx.send("`That ID does not exist in the database.`")
-
-            for user in profile:
-                date_ = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(user["ban_timestamp"])))
-                description = (
-                    f'**Discord Name**: {user["discord_name"]}\n'
-                    f'**Discord ID**: {user["discord_id"]}\n'
-                    f'**Ban Date**: {date_}\n'
-                    f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
-                    f'**Reason**: {user["reason"]}\n'
-                    f'**Ban Ended**: {user["ended"]}'
-                )
-                embed = discord.Embed(title=f'Ban Profile : {user["discord_name"]}',
-                                      description=description,
-                                      colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
-                embed.set_footer(text=ctx.author)
-
-                if _all:
-                    await ctx.send(embed=embed)
-
-            if not _all:
-                await ctx.send(embed=embed)
-
-            return
+            await bans.command_ban_profile(bot, guild_details, _id, _all=_all)
 
         @bot.command(
             name='ban_profile_all',
@@ -450,30 +222,7 @@ class Functionality:
             if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = _browse_ban_profile()
-
-            if not profile:
-                return await ctx.send("`There are no bans in the Database.`")
-
-            for user in profile:
-                date_ = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(user["ban_timestamp"])))
-                description = (
-                        f'**Discord Name**: {user["discord_name"]}\n'
-                        f'**Discord ID**: {user["discord_id"]}\n'
-                        f'**Ban Date**: {date_}\n'
-                        f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
-                        f'**Reason**: {user["reason"]}\n'
-                        f'**Ban Ended**: {user["ended"]}'
-                    )
-                embed = discord.Embed(title=f'Ban Profile : {user["discord_name"]}',
-                                      description=description,
-                                      colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
-                embed.set_footer(text=ctx.author)
-
-                await ctx.send(embed=embed)
-
-            return
+            await bans.command_ban_profile_all(bot, guild_details, ctx)
 
         @bot.command(
             name='ban_list_update',
@@ -489,19 +238,7 @@ class Functionality:
             if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            updated_list = update_ban_list()[1]
-
-            if updated_list:
-                for user in updated_list:
-                    answer = int(user["ban_timestamp"]) + int(user["ban_length"])
-                    answer = round(time.time()) - answer
-
-                    if answer >= 0:
-                        target = await bot.fetch_user(int(user['discord_id']))
-                        await target.send('**You are now unbanned from using the Server Bot. '
-                                          'Please do not make the same offense again.**')
-
-            await ctx.send("**Updated! Those whose ban is over will be notified.**")
+            await bans.command_ban_list_update(bot, guild_details, ctx)
 
         @bot.command(
             name='add_roleplay',
@@ -539,7 +276,8 @@ class Functionality:
                 return await ctx.send("`Insufficient Privileges.`")
 
             await roleplays.command_add_roleplay(
-                bot, guild_details, ctx, rp_name, main_host_id, rp_start_date, rp_duration, doc
+                bot, guild_details, ctx, rp_name, main_host_id, rp_start_date, rp_duration, doc,
+                serial_code=serial_code, local=local, sign_up=sign_up, ongoing=ongoing, ended=ended,
                 )
 
         @bot.command(
@@ -573,7 +311,7 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            await roleplays.command_rp_profile_filter(bot, guild_details, ctx, value)
+            await roleplays.command_rp_profile_filter(bot, guild_details, ctx, value=value)
 
         @bot.command(
             name='rp_change_status',

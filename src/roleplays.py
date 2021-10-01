@@ -139,7 +139,7 @@ async def command_rp_profile(bot, guild_details, ctx: commands.Context, _id):
     await ctx.send(embed=embed)
 
 
-async def command_rp_profile_filter(bot, guild_details, ctx: commands.Context, value):
+async def command_rp_profile_filter(bot, guild_details, ctx: commands.Context, value="0"):
     try:
         value = int(value)
     except ValueError:

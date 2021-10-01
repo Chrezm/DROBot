@@ -10,7 +10,7 @@ from discord.ext import commands
 
 async def command_ban_id(bot, guild_details, ctx: commands.Context, user_id: int,
                          ban_length: int = 259200, reason="Unstated Reason"):
-    ban_ids = ban_id_check()
+    ban_ids = fetch_ban_ids()
 
     try:
         target = await bot.fetch_user(user_id)
@@ -145,7 +145,7 @@ async def command_ban_list_update(bot, guild_details, ctx: commands.Context):
 
 
 # This is the initial check for ban_ids.csv and obtaining its data.
-def ban_id_check():
+def fetch_ban_ids():
     ban_list = None
     try:
         with open("ban_ids.csv", "r+", newline="") as file:
@@ -159,7 +159,14 @@ def ban_id_check():
     except FileNotFoundError:
         with open("ban_ids.csv", "w") as file:
             print("ban_ids.csv does not exist; the bot will now create one...")
-            fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
+            fieldnames = [
+                "discord_id",
+                "discord_name",
+                "ban_timestamp",
+                "ban_length",
+                "reason",
+                "ended"
+                ]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
 
@@ -179,7 +186,7 @@ def _second_to_hour(second: int) -> int:
 
 
 def _browse_ban_profile(user_id: int = None) -> List:
-    ban_list = ban_id_check()
+    ban_list = fetch_ban_ids()
     found = []
 
     for user in ban_list:
@@ -190,7 +197,7 @@ def _browse_ban_profile(user_id: int = None) -> List:
 
 
 def _update_unban(_id):
-    ban_ids = ban_id_check()
+    ban_ids = fetch_ban_ids()
     updated_ban_list = list()
     inform_ban_list = list()  # This is to inform players when their ban is over.
 
@@ -230,7 +237,7 @@ def _update_unban(_id):
 
 
 def _update_ban_list():
-    ban_ids = ban_id_check()
+    ban_ids = fetch_ban_ids()
     updated_ban_list = list()
     inform_ban_list = list()  # This is to inform players when their ban is over.
     update_dict = None

@@ -14,8 +14,8 @@ class Functionality:
         @bot.event
         async def on_ready():
             # This is to start the checks and if said file does not exist, will create one.
-            bans.ban_id_check()
-            roleplays.rp_id_check()
+            bans.fetch_ban_ids()
+            roleplays.fetch_rps()
 
             # This is to begin the task loop.
             second_passing.start()
@@ -44,13 +44,13 @@ class Functionality:
 
         @bot.event
         async def on_message(message):
-            # Looks through the ban_id.csv
-            ban_id_ = bans.ban_id_check()
-
             if message.author == bot.user:
                 return
 
             if message.channel.name in guild_details.relaying_channels:
+                # Looks through the ban_id.csv
+                ban_id_ = bans.fetch_ban_ids()
+
                 # Right here, it will delete the message and notify the user who tried using the
                 # bot that they are banned.
                 for user in ban_id_:

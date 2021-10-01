@@ -14,7 +14,7 @@ from discord.ext import commands
 async def command_add_roleplay(bot, guild_details, ctx: commands.Context, rp_name, main_host_id: int,
                                rp_start_date: int, rp_duration: int, doc, serial_code=None,
                                local: int = 1, sign_up: int = 1, ongoing: int = 0, ended: int = 0):
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
 
     arg_check = [local, sign_up, ongoing, ended]
     for arg in arg_check:
@@ -237,7 +237,7 @@ def _create_code() -> str:
 
 
 # This is the initial check for rp_collection.csv and obtaining its data.
-def rp_id_check() -> List:
+def fetch_rps() -> List:
     rp_list = None
     try:
         with open("rp_collection.csv", "r+", newline="") as file:
@@ -274,7 +274,7 @@ def rp_id_check() -> List:
 
 
 def update_rp_list() -> List:
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     updated_rp_list = list()
     update_dict = None
 
@@ -343,7 +343,7 @@ def _update_rp_list_choice(_id, val) -> Tuple[List, List]:
         3: [0, 0, 1]  # Ends RP
     }
 
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     updated_rp_list = list()
     inform_update = list()
 
@@ -403,7 +403,7 @@ def _update_rp_list_choice(_id, val) -> Tuple[List, List]:
 
 
 def _rp_profile_check(_id) -> List:
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     found = []
 
     for rp in rp_list:
@@ -417,7 +417,7 @@ def _rp_profile_check_sign_up(val) -> List:
     if val != 0:
         return
 
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     found = []
 
     for rp in rp_list:
@@ -431,7 +431,7 @@ def _rp_profile_check_ongoing(val) -> List:
     if val != 1:
         return
 
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     found = []
 
     for rp in rp_list:
@@ -445,7 +445,7 @@ def _rp_profile_check_ended(val) -> List:
     if val != 2:
         return
 
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     found = []
 
     for rp in rp_list:
@@ -459,7 +459,7 @@ def _rp_profile_check_all(val) -> List:
     if val != 3:
         return
 
-    rp_list = rp_id_check()
+    rp_list = fetch_rps()
     found = []
 
     for rp in rp_list:

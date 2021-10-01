@@ -62,39 +62,24 @@ async def command_add_roleplay(bot, guild_details, ctx: commands.Context, rp_nam
 
     noted_time = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(rp_start_date)))
 
-    with open("rp_collection.csv", "a") as file:
-        fieldnames = [
-            "serial_code",
-            "approved",
-            "approved_id",
-            "local",
-            "rp_name",
-            "main_host",
-            "main_host_id",
-            "rp_start_date",
-            "rp_start_time",
-            "rp_duration",
-            "doc",
-            "sign_up",
-            "ongoing",
-            "ended"]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writerow({
-            "serial_code": serial_code,
-            "approved": ctx.author.name,
-            "approved_id": ctx.author.id,
-            "local": local,
-            "rp_name": rp_name,
-            "main_host": target.name,
-            "main_host_id": main_host_id,
-            "rp_start_date": rp_start_date,
-            "rp_start_time": f"{hour_split[0]}:{hour_split[1]}",
-            "rp_duration": rp_duration,
-            "doc": doc,
-            "sign_up": sign_up,
-            "ongoing": ongoing,
-            "ended": ended
-            })
+    database_entry = {
+        "serial_code": serial_code,
+        "approved": ctx.author.name,
+        "approved_id": ctx.author.id,
+        "local": local,
+        "rp_name": rp_name,
+        "main_host": target.name,
+        "main_host_id": main_host_id,
+        "rp_start_date": rp_start_date,
+        "rp_start_time": f"{hour_split[0]}:{hour_split[1]}",
+        "rp_duration": rp_duration,
+        "doc": doc,
+        "sign_up": sign_up,
+        "ongoing": ongoing,
+        "ended": ended
+        }
+
+    _append_roleplay_database([database_entry])
 
     await ctx.channel.send(f'**{rp_name} ({serial_code}) was inserted to the Database; '
                            f'hosted by {target.name}.**'
@@ -240,35 +225,10 @@ def _create_code() -> str:
 def fetch_rps() -> List:
     rp_list = None
     try:
-        with open("rp_collection.csv", "r+", newline="") as file:
-            reader = csv.DictReader(file)
-            rp_list = []
-            for x in reader:
-                rp_list.append(x)
-
-            return rp_list
-
+        return _read_roleplay_database()
     except FileNotFoundError:
-        with open("rp_collection.csv", "w") as file:
-            print("rp_collection.csv does not exist; the bot will now create one...")
-            fieldnames = [
-                "serial_code",
-                "approved",
-                "approved_id",
-                "local",
-                "rp_name",
-                "main_host",
-                "main_host_id",
-                "rp_start_date",
-                "rp_start_time",
-                "rp_duration",
-                "doc",
-                "sign_up",
-                "ongoing",
-                "ended"
-                ]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
+        print("rp_collection.csv does not exist; the bot will now create one...")
+        _set_roleplay_database([])
 
     return rp_list
 
@@ -308,30 +268,7 @@ def update_rp_list() -> List:
 
         updated_rp_list.append(update_dict)
 
-    with open("rp_collection.csv", "w+") as file:
-        fieldnames = [
-            "serial_code",
-            "approved",
-            "approved_id",
-            "local",
-            "rp_name",
-            "main_host",
-            "main_host_id",
-            "rp_start_date",
-            "rp_start_time",
-            "rp_duration",
-            "doc",
-            "sign_up",
-            "ongoing",
-            "ended"
-            ]
-
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for update in updated_rp_list:
-            writer.writerow(update)
-
+    _set_roleplay_database(updated_rp_list)
     return updated_rp_list
 
 
@@ -375,30 +312,7 @@ def _update_rp_list_choice(_id, val) -> Tuple[List, List]:
 
         updated_rp_list.append(update_dict)
 
-    with open("rp_collection.csv", "w+") as file:
-        fieldnames = [
-            "serial_code",
-            "approved",
-            "approved_id",
-            "local",
-            "rp_name",
-            "main_host",
-            "main_host_id",
-            "rp_start_date",
-            "rp_start_time",
-            "rp_duration",
-            "doc",
-            "sign_up",
-            "ongoing",
-            "ended"
-            ]
-
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for update in updated_rp_list:
-            writer.writerow(update)
-
+    _set_roleplay_database(updated_rp_list)
     return updated_rp_list, inform_update
 
 
@@ -466,3 +380,49 @@ def _rp_profile_check_all(val) -> List:
         found.append(rp)
 
     return found
+
+
+_ROLEPLAY_DATABASE_FIELDS = [
+    "serial_code",
+    "approved",
+    "approved_id",
+    "local",
+    "rp_name",
+    "main_host",
+    "main_host_id",
+    "rp_start_date",
+    "rp_start_time",
+    "rp_duration",
+    "doc",
+    "sign_up",
+    "ongoing",
+    "ended"
+    ]
+
+_ROLEPLAY_DATABASE_FILENAME = "rp_collection.csv"
+
+
+def _set_roleplay_database(roleplays: List):
+    with open(_ROLEPLAY_DATABASE_FILENAME, "w+") as file:
+        writer = csv.DictWriter(file, fieldnames=_ROLEPLAY_DATABASE_FIELDS)
+        writer.writeheader()
+
+        for update in roleplays:
+            writer.writerow(update)
+
+
+def _append_roleplay_database(roleplays: List):
+    with open(_ROLEPLAY_DATABASE_FILENAME, "a") as file:
+        writer = csv.DictWriter(file, fieldnames=_ROLEPLAY_DATABASE_FIELDS)
+        for update in roleplays:
+            writer.writerow(update)
+
+
+def _read_roleplay_database() -> List:
+    with open(_ROLEPLAY_DATABASE_FILENAME, "r+", newline="") as file:
+        reader = csv.DictReader(file)
+        rp_list = []
+        for x in reader:
+            rp_list.append(x)
+
+        return rp_list

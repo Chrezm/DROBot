@@ -23,24 +23,16 @@ async def command_ban_id(bot, guild_details, ctx: commands.Context, user_id: int
             return await ctx.send(f"**{target.name} is already in the list and his ban has "
                                   "not ended.**")
 
-    with open("ban_ids.csv", "a") as file_:
-        fieldnames = [
-            "discord_id",
-            "discord_name",
-            "ban_timestamp",
-            "ban_length",
-            "reason",
-            "ended"
-            ]
-        writer = csv.DictWriter(file_, fieldnames=fieldnames)
-        writer.writerow({
-            "discord_id": user_id,
-            "discord_name": target.name,
-            "ban_timestamp": round(time.time()),
-            "ban_length": ban_length,
-            "reason": reason,
-            "ended": 0
-            })
+    ban_entry = {
+        "discord_id": user_id,
+        "discord_name": target.name,
+        "ban_timestamp": round(time.time()),
+        "ban_length": ban_length,
+        "reason": reason,
+        "ended": 0
+        }
+
+    _append_ban_database([ban_entry])
 
     if ban_length < 86400:
         days = _second_to_hour(ban_length)
@@ -157,18 +149,8 @@ def fetch_ban_ids():
             return ban_list
 
     except FileNotFoundError:
-        with open("ban_ids.csv", "w") as file:
-            print("ban_ids.csv does not exist; the bot will now create one...")
-            fieldnames = [
-                "discord_id",
-                "discord_name",
-                "ban_timestamp",
-                "ban_length",
-                "reason",
-                "ended"
-                ]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
+        print("ban_ids.csv does not exist; the bot will now create one...")
+        _set_ban_database([])
 
     return ban_list
 
@@ -218,21 +200,7 @@ def _update_unban(_id):
 
         updated_ban_list.append(update_dict)
 
-    with open("ban_ids.csv", "w+") as file:
-        fieldnames = [
-            "discord_id",
-            "discord_name",
-            "ban_timestamp",
-            "ban_length",
-            "reason",
-            "ended"
-            ]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for update in updated_ban_list:
-            writer.writerow(update)
-
+    _set_ban_database(updated_ban_list)
     return updated_ban_list, inform_ban_list
 
 
@@ -267,21 +235,7 @@ def _update_ban_list():
 
         updated_ban_list.append(update_dict)
 
-    with open("ban_ids.csv", "w+") as file:
-        fieldnames = [
-            "discord_id",
-            "discord_name",
-            "ban_timestamp",
-            "ban_length",
-            "reason",
-            "ended"
-            ]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for update in updated_ban_list:
-            writer.writerow(update)
-
+    _set_ban_database(updated_ban_list)
     return updated_ban_list, inform_ban_list
 
 
@@ -299,3 +253,42 @@ async def inform_update_list(bot):
                                   "Please do not commit the same offense again.**")
 
     return
+
+
+_BAN_DATABASE_FIELDS = [
+    "discord_id",
+    "discord_name",
+    "ban_timestamp",
+    "ban_length",
+    "reason",
+    "ended"
+    ]
+
+_BAN_DATABASE_FILENAME = "ban_ids.csv"
+
+
+def _set_ban_database(bans: List):
+    with open(_BAN_DATABASE_FILENAME, "w+") as file:
+        writer = csv.DictWriter(file, fieldnames=_BAN_DATABASE_FILENAME)
+        writer.writeheader()
+
+        for update in bans:
+            writer.writerow(update)
+
+
+def _append_ban_database(bans: List):
+    with open(_BAN_DATABASE_FILENAME, "a") as file:
+        writer = csv.DictWriter(file, fieldnames=_BAN_DATABASE_FILENAME)
+
+        for update in bans:
+            writer.writerow(update)
+
+
+def _read_ban_database() -> List:
+    with open(_BAN_DATABASE_FILENAME, "r+", newline="") as file:
+        reader = csv.DictReader(file)
+        ban_list = []
+        for x in reader:
+            ban_list.append(x)
+
+        return ban_list

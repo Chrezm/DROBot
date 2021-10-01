@@ -4,10 +4,9 @@ import time
 import csv
 import string
 import random
-import asyncio
 from discord.ext import commands, tasks
 
-from typing import Dict
+from typing import Dict, List
 
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
@@ -54,13 +53,36 @@ def rp_id_check():
     except FileNotFoundError:
         with open("rp_collection.csv", "w") as file:
             print("rp_collection.csv does not exist; the bot will now create one...")
-            fieldnames = ["serial_code", "approved", "approved_id", "local", "rp_name", "main_host", "main_host_id",
-                          "rp_start_date", "rp_start_time", "rp_duration", "doc", "sign_up", "ongoing", "ended"]
+            fieldnames = [
+                "serial_code",
+                "approved",
+                "approved_id",
+                "local",
+                "rp_name",
+                "main_host",
+                "main_host_id",
+                "rp_start_date",
+                "rp_start_time",
+                "rp_duration",
+                "doc",
+                "sign_up",
+                "ongoing",
+                "ended"
+                ]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
 
     return rp_list
 
+# Converts Seconds to Days
+def second_to_day(second: int) -> int:
+    answer = second / 86400
+    return round(answer)
+
+# Converts Seconds to Hours
+def second_to_hour(second: int) -> int:
+    answer = second / 3600
+    return round(answer)
 
 class Functionality:
     def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
@@ -104,11 +126,13 @@ class Functionality:
                 return
 
             if message.channel.name in guild_details.relaying_channels:
-                # Right here, it will delete the message and notify the user who tried using the bot that they are banned.
+                # Right here, it will delete the message and notify the user who tried using the
+                # bot that they are banned.
                 for user in ban_id_:
                     if message.author.id == user["discord_id"] and not int(user["ended"]):
                         await message.delete(message)
-                        return await message.author.send("**You cannot use the bot due to your ban.**")
+                        return await message.author.send("**You cannot use the bot due to your "
+                                                         "ban.**")
 
                 await _relay_message(
                     message,
@@ -133,6 +157,8 @@ class Functionality:
                 return True
 
             for role in ctx.author.roles:
+                if role.id == guild_details.bot_maintainer_role_id:
+                    return True
                 if role.id in guild_details.command_always_accept_from_roles:
                     return True
 
@@ -164,7 +190,7 @@ class Functionality:
             await to_channel.send(final_message)
 
         # Checks Admin Status
-        def admin_check(ctx):
+        def _check_bot_admin(ctx) -> bool:
             # Bot Maintainer always gets privilege
             for role in ctx.author.roles:
                 if role == guild_details.bot_maintainer_role_id:
@@ -176,35 +202,15 @@ class Functionality:
                 if admin_role in ctx.author.roles:
                     return True
 
-            return None
+            return False
 
-        # Converts Seconds to Days
-        def second_to_day(second: int):
-            answer = second / 86400
-            return round(answer)
-
-        # Converts Seconds to Hours
-        def second_to_hour(second: int):
-            answer = second / 3600
-            return round(answer)
-
-        def ban_profile_check(_id):
+        def _browse_ban_profile(user_id: int = None) -> List:
             ban_list = ban_id_check()
             found = []
 
             for user in ban_list:
-                if str(_id) == user["discord_id"]:
+                if user_id is None or user['discord_id'] == str(user_id):
                     found.append(user)
-
-            return found
-
-        def ban_profile_check_all():
-
-            ban_list = ban_id_check()
-            found = []
-
-            for ban in ban_list:
-                found.append(ban)
 
             return found
 
@@ -215,9 +221,14 @@ class Functionality:
 
             for user in ban_ids:
                 if str(_id) == user["discord_id"]:
-                    update_dict = {"discord_id": user["discord_id"], "discord_name": user["discord_name"], "ban_timestamp": user["ban_timestamp"],
-                                   "ban_length": user["ban_length"], "reason": user["reason"], "ended": 1}
-
+                    update_dict = {
+                        "discord_id": user["discord_id"],
+                        "discord_name": user["discord_name"],
+                        "ban_timestamp": user["ban_timestamp"],
+                        "ban_length": user["ban_length"],
+                        "reason": user["reason"],
+                        "ended": 1
+                        }
                     inform_ban_list.append(update_dict)
 
                 else:
@@ -226,7 +237,14 @@ class Functionality:
                 updated_ban_list.append(update_dict)
 
             with open("ban_ids.csv", "w+") as file:
-                fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
+                fieldnames = [
+                    "discord_id",
+                    "discord_name",
+                    "ban_timestamp",
+                    "ban_length",
+                    "reason",
+                    "ended"
+                    ]
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
 
@@ -250,8 +268,14 @@ class Functionality:
                         update_dict = user
 
                     if user["ended"] == "0":
-                        update_dict = {"discord_id": user["discord_id"], "discord_name": user["discord_name"], "ban_timestamp": user["ban_timestamp"],
-                                       "ban_length": user["ban_length"], "reason": user["reason"], "ended": 1}
+                        update_dict = {
+                            "discord_id": user["discord_id"],
+                            "discord_name": user["discord_name"],
+                            "ban_timestamp": user["ban_timestamp"],
+                            "ban_length": user["ban_length"],
+                            "reason": user["reason"],
+                            "ended": 1
+                            }
 
                         inform_ban_list.append(update_dict)
 
@@ -261,7 +285,14 @@ class Functionality:
                 updated_ban_list.append(update_dict)
 
             with open("ban_ids.csv", "w+") as file:
-                fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
+                fieldnames = [
+                    "discord_id",
+                    "discord_name",
+                    "ban_timestamp",
+                    "ban_length",
+                    "reason",
+                    "ended"
+                    ]
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
 
@@ -280,7 +311,8 @@ class Functionality:
 
                     if answer >= 0:
                         target = await bot.fetch_user(int(user['discord_id']))
-                        await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
+                        await target.send("**You are now unbanned from using the Server Bot. "
+                                          "Please do not commit the same offense again.**")
 
             return
 
@@ -297,10 +329,22 @@ class Functionality:
                         update_dict = user
 
                     if user["ongoing"] == "0":
-                        update_dict = {"serial_code": user['serial_code'], "approved": user['approved'], "approved_id": user['approved_id'], "local": user['local'],
-                                       "rp_name": user['rp_name'], "main_host": user['main_host'], "main_host_id": user['main_host_id'], "rp_start_date": user['rp_start_date'],
-                                       "rp_start_time": user['rp_start_time'], "rp_duration": user['rp_duration'], "doc": user['doc'],
-                                       "sign_up": 0, "ongoing": 1, "ended": 0}
+                        update_dict = {
+                            "serial_code": user['serial_code'],
+                            "approved": user['approved'],
+                            "approved_id": user['approved_id'],
+                            "local": user['local'],
+                            "rp_name": user['rp_name'],
+                            "main_host": user['main_host'],
+                            "main_host_id": user['main_host_id'],
+                            "rp_start_date": user['rp_start_date'],
+                            "rp_start_time": user['rp_start_time'],
+                            "rp_duration": user['rp_duration'],
+                            "doc": user['doc'],
+                            "sign_up": 0,
+                            "ongoing": 1,
+                            "ended": 0
+                            }
 
                 else:
                     update_dict = user
@@ -308,8 +352,22 @@ class Functionality:
                 updated_rp_list.append(update_dict)
 
             with open("rp_collection.csv", "w+") as file:
-                fieldnames = ["serial_code", "approved", "approved_id", "local", "rp_name", "main_host", "main_host_id",
-                              "rp_start_date", "rp_start_time", "rp_duration", "doc", "sign_up", "ongoing", "ended"]
+                fieldnames = [
+                    "serial_code",
+                    "approved",
+                    "approved_id",
+                    "local",
+                    "rp_name",
+                    "main_host",
+                    "main_host_id",
+                    "rp_start_date",
+                    "rp_start_time",
+                    "rp_duration",
+                    "doc",
+                    "sign_up",
+                    "ongoing",
+                    "ended"
+                    ]
 
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
@@ -335,10 +393,22 @@ class Functionality:
                 value_change = change_dict[val]
 
                 if str(_id) == user["serial_code"]:
-                    update_dict = {"serial_code": user['serial_code'], "approved": user['approved'], "approved_id": user['approved_id'], "local": user['local'],
-                                   "rp_name": user['rp_name'], "main_host": user['main_host'], "main_host_id": user['main_host_id'], "rp_start_date": user['rp_start_date'],
-                                   "rp_start_time": user['rp_start_time'], "rp_duration": user['rp_duration'], "doc": user['doc'],
-                                   "sign_up": value_change[0], "ongoing": value_change[1], "ended": value_change[2]}
+                    update_dict = {
+                        "serial_code": user['serial_code'],
+                        "approved": user['approved'],
+                        "approved_id": user['approved_id'],
+                        "local": user['local'],
+                        "rp_name": user['rp_name'],
+                        "main_host": user['main_host'],
+                        "main_host_id": user['main_host_id'],
+                        "rp_start_date": user['rp_start_date'],
+                        "rp_start_time": user['rp_start_time'],
+                        "rp_duration": user['rp_duration'],
+                        "doc": user['doc'],
+                        "sign_up": value_change[0],
+                        "ongoing": value_change[1],
+                        "ended": value_change[2]
+                        }
 
                     inform_update.append(update_dict)
 
@@ -348,8 +418,22 @@ class Functionality:
                 updated_rp_list.append(update_dict)
 
             with open("rp_collection.csv", "w+") as file:
-                fieldnames = ["serial_code", "approved", "approved_id", "local", "rp_name", "main_host", "main_host_id",
-                              "rp_start_date", "rp_start_time", "rp_duration", "doc", "sign_up", "ongoing", "ended"]
+                fieldnames = [
+                    "serial_code",
+                    "approved",
+                    "approved_id",
+                    "local",
+                    "rp_name",
+                    "main_host",
+                    "main_host_id",
+                    "rp_start_date",
+                    "rp_start_time",
+                    "rp_duration",
+                    "doc",
+                    "sign_up",
+                    "ongoing",
+                    "ended"
+                    ]
 
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
@@ -443,15 +527,18 @@ class Functionality:
         @bot.command(
             name='ban_id',
             brief='Bans a Discord User from using the Bot.',
-            help=('Bans a Discord User from using the Bot. There are multiple arguments needed to be filled.'
+            help=('Bans a Discord User from using the Bot. There are multiple arguments needed to be '
+                  'filled.'
                   '\nArguments: $ban_id <user_id> <ban_length : seconds> <reason> '
-                  '\nExample: $ban_id 332456386946531328 259200 "There must be a open and close quotes for reason."')
+                  '\nExample: $ban_id 332456386946531328 259200 "There must be a open and close '
+                  'quotes for reason."')
         )
-        async def ban_id(ctx: commands.Context, user_id: int, ban_length: int = 259200, reason="Unstated Reason"):
+        async def ban_id(ctx: commands.Context, user_id: int, ban_length: int = 259200,
+                         reason="Unstated Reason"):
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             ban_ids = ban_id_check()
@@ -459,16 +546,32 @@ class Functionality:
             try:
                 target = await bot.fetch_user(user_id)
             except discord.NotFound as p:
-                return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the server.**")
+                return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the "
+                                      "server.**")
 
             for dict_ban in ban_ids:
                 if str(user_id) == str(dict_ban["discord_id"]) and not int(dict_ban["ended"]):
-                    return await ctx.send(f"**{target.name} is already in the list and his ban has not ended.**")
+                    return await ctx.send(f"**{target.name} is already in the list and his ban has "
+                                          "not ended.**")
 
             with open("ban_ids.csv", "a") as file_:
-                fieldnames = ["discord_id", "discord_name", "ban_timestamp", "ban_length", "reason", "ended"]
+                fieldnames = [
+                    "discord_id",
+                    "discord_name",
+                    "ban_timestamp",
+                    "ban_length",
+                    "reason",
+                    "ended"
+                    ]
                 writer = csv.DictWriter(file_, fieldnames=fieldnames)
-                writer.writerow({"discord_id": user_id, "discord_name": target.name, "ban_timestamp": round(time.time()), "ban_length": ban_length, "reason": reason, "ended": 0})
+                writer.writerow({
+                    "discord_id": user_id,
+                    "discord_name": target.name,
+                    "ban_timestamp": round(time.time()),
+                    "ban_length": ban_length,
+                    "reason": reason,
+                    "ended": 0
+                    })
 
             if ban_length < 86400:
                 days = second_to_hour(ban_length)
@@ -478,7 +581,8 @@ class Functionality:
                 days = second_to_day(ban_length)
                 word_ = f"{days} days"
 
-            await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the Server Bot for {word_}.**'
+            await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the '
+                                   f'Server Bot for {word_}.**'
                                    f'\n`Reason: {reason}`')
             await target.send(f'**You are now banned from using the Server Bot for {word_}**'
                               f'\n`Reason: {reason}`')
@@ -486,7 +590,8 @@ class Functionality:
         @bot.command(
             name='unban',
             brief='Unbans a Discord User from using the Bot.',
-            help=('Unbans a Discord User from using the Bot. There is only a single argument needed to be filled.'
+            help=('Unbans a Discord User from using the Bot. There is only a single argument needed '
+                  'to be filled.'
                   '\nArguments: $unban <discord_id>'
                   '\nExample: $unban 332456386946531328'),
         )
@@ -494,10 +599,10 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            initial_check = ban_profile_check(_id)
+            initial_check = _browse_ban_profile(user_id=_id)
             if not initial_check:
                 return await ctx.send("`Invalid Discord ID.`")
 
@@ -506,14 +611,16 @@ class Functionality:
 
             for user in updated_list:
                 target = await bot.fetch_user(int(user['discord_id']))
-                await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
+                await target.send('**You are now unbanned from using the Server Bot. Please do not '
+                                  'commit the same offense again.**')
 
             return await ctx.send("**Updated! Those whose ban is revoked will be notified.**")
 
         @bot.command(
             name='ban_profile',
             brief='Returns a profile of the banned user.',
-            help=('Returns a profile of the banned user. There is only a single mandatory argument needed to be filled.'
+            help=('Returns a profile of the banned user. There is only a single mandatory argument '
+                  'needed to be filled.'
                   '\nArguments: $ban_profile <discord_id> <_all>'
                   '\nExample: $ban_profile 332456386946531328 False'
                   "\n\n<_all> is optional, but it must be a boolean of either True or False. "
@@ -524,10 +631,10 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = ban_profile_check(_id)
+            profile = _browse_ban_profile(user_id=_id)
             embed = None
 
             if not profile:
@@ -535,14 +642,16 @@ class Functionality:
 
             for user in profile:
                 date_ = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(user["ban_timestamp"])))
+                description = (
+                    f'**Discord Name**: {user["discord_name"]}\n'
+                    f'**Discord ID**: {user["discord_id"]}\n'
+                    f'**Ban Date**: {date_}\n'
+                    f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                    f'**Reason**: {user["reason"]}\n'
+                    f'**Ban Ended**: {user["ended"]}'
+                )
                 embed = discord.Embed(title=f'Ban Profile : {user["discord_name"]}',
-                                      description=f'**Discord Name**: {user["discord_name"]}\n'
-                                                  f'**Discord ID**: {user["discord_id"]}\n'
-                                                  f'**Ban Date**: {date_}\n'
-                                                  f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
-                                                  f'**Reason**: {user["reason"]}\n'
-                                                  f'**Ban Ended**: {user["ended"]}',
-
+                                      description=description,
                                       colour=discord.Color.dark_blue())
                 embed.set_thumbnail(url=ctx.author.avatar_url)
                 embed.set_footer(text=ctx.author)
@@ -558,7 +667,8 @@ class Functionality:
         @bot.command(
             name='ban_profile_all',
             brief='Returns all ban profiles from all banned or previously banned users.',
-            help=('Returns all ban profiles from all banned or previously banned users. An argument is not necessary.'
+            help=('Returns all ban profiles from all banned or previously banned users. An argument '
+                  'is not necessary.'
                   '\nArguments: $ban_profile_all'
                   '\nExample: $ban_profile_all')
         )
@@ -566,24 +676,26 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = ban_profile_check_all()
+            profile = _browse_ban_profile()
 
             if not profile:
                 return await ctx.send("`There are no bans in the Database.`")
 
             for user in profile:
                 date_ = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(user["ban_timestamp"])))
+                description = (
+                        f'**Discord Name**: {user["discord_name"]}\n'
+                        f'**Discord ID**: {user["discord_id"]}\n'
+                        f'**Ban Date**: {date_}\n'
+                        f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                        f'**Reason**: {user["reason"]}\n'
+                        f'**Ban Ended**: {user["ended"]}'
+                    )
                 embed = discord.Embed(title=f'Ban Profile : {user["discord_name"]}',
-                                      description=f'**Discord Name**: {user["discord_name"]}\n'
-                                                  f'**Discord ID**: {user["discord_id"]}\n'
-                                                  f'**Ban Date**: {date_}\n'
-                                                  f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
-                                                  f'**Reason**: {user["reason"]}\n'
-                                                  f'**Ban Ended**: {user["ended"]}',
-
+                                      description=description,
                                       colour=discord.Color.dark_blue())
                 embed.set_thumbnail(url=ctx.author.avatar_url)
                 embed.set_footer(text=ctx.author)
@@ -603,7 +715,7 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             updated_list = update_ban_list()[1]
@@ -615,33 +727,44 @@ class Functionality:
 
                     if answer >= 0:
                         target = await bot.fetch_user(int(user['discord_id']))
-                        await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
+                        await target.send('**You are now unbanned from using the Server Bot. '
+                                          'Please do not make the same offense again.**')
 
             await ctx.send("**Updated! Those whose ban is over will be notified.**")
 
         @bot.command(
             name='add_roleplay',
             brief='Adds a roleplay into the Database.',
-            help=('Adds a roleplay into the Database. There are a lot of arguments needed to be filled; ensure you do "open and close" quotes IF they are not integers.'
-                  '\nArguments: $add_roleplay <rp_name> <main_host_id> <rp_start_date> <rp_duration> <doc> '
-                  '<serial_code: optional> <local: optional> <sign_up: optional> <ongoing: optional> <ended: optional>'
-                  '\nExample: $add_roleplay "Helvetica Neue" 332456386946531328 42069 5 "https://www.epochconverter.com"'
+            help=('Adds a roleplay into the Database. There are a lot of arguments needed to be '
+                  'filled; ensure you do "open and close" quotes IF they are not integers.'
+                  '\nArguments: $add_roleplay <rp_name> <main_host_id> <rp_start_date> '
+                  '<rp_duration> <doc> '
+                  '<serial_code: optional> <local: optional> <sign_up: optional> '
+                  '<ongoing: optional> <ended: optional>'
+                  '\nExample: $add_roleplay "Helvetica Neue" 332456386946531328 42069 5 '
+                  '"https://www.epochconverter.com"'
                   '"HN" 1 0 0'
                   "\n\n<main_host_id> is the Main Host's Discord ID."
                   "\n<rp_start_date> is an epoch number. Use https://www.epochconverter.com"
                   "\n<rp_duration> is an integer. In hours, how long the Roleplay is."
-                  "\n<serial_code> is an optional field, but can be customized. It is used to find your RP in [rp_profile] and store in the database."
-                  "\n<local> is an optional field, can only be 0 or 1. --0: False (Hosted outside ODROS) | 1: True (Hosted within ODROS)--"
-                  "\n<sign_up> is an optional field, can only be 0 or 1. --0: False (Sign ups are closed) | 1: True (Sign ups are open)--"
-                  "\n<ongoing> is an optional field, can only be 0 or 1. --0: False (RP is not ongoing) | 1: True (RP is ongoing)--"
-                  "\n<ended> is an optional field, can only be 0 or 1. --0: False (RP has not ended) | 1: True (RP ended)--"),
+                  "\n<serial_code> is an optional field, but can be customized. It is used to find "
+                  "your RP in [rp_profile] and store in the database."
+                  "\n<local> is an optional field, can only be 0 or 1. --0: False "
+                  "(Hosted outside ODROS) | 1: True (Hosted within ODROS)--"
+                  "\n<sign_up> is an optional field, can only be 0 or 1. --0: False "
+                  "(Sign ups are closed) | 1: True (Sign ups are open)--"
+                  "\n<ongoing> is an optional field, can only be 0 or 1. --0: False "
+                  "(RP is not ongoing) | 1: True (RP is ongoing)--"
+                  "\n<ended> is an optional field, can only be 0 or 1. --0: False "
+                  "(RP has not ended) | 1: True (RP ended)--"),
         )
-        async def add_roleplay(ctx: commands.Context, rp_name, main_host_id: int, rp_start_date: int, rp_duration: int,
-                               doc, serial_code=None, local: int = 1, sign_up: int = 1, ongoing: int = 0, ended: int = 0):
+        async def add_roleplay(ctx: commands.Context, rp_name, main_host_id: int,
+                               rp_start_date: int, rp_duration: int, doc, serial_code=None,
+                               local: int = 1, sign_up: int = 1, ongoing: int = 0, ended: int = 0):
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             rp_list = rp_id_check()
@@ -651,7 +774,8 @@ class Functionality:
                 try:
                     arg = int(arg)
                     if arg not in [0, 1]:
-                        return await ctx.send(f"`<Local>, <Sign Up>, <Ongoing>, and <Ended> Arguments must be either 0 or 1.`")
+                        return await ctx.send("`<Local>, <Sign Up>, <Ongoing>, and <Ended> "
+                                              "Arguments must be either 0 or 1.`")
                 except ValueError:
                     return await ctx.send(f"`Please input a valid integer. {arg} is not valid.`")
 
@@ -668,16 +792,21 @@ class Functionality:
                     ongoing_note = "still on its sign up phase"
 
                 if serial_code == rp["serial_code"]:
-                    return await ctx.send(f"**Serial code {rp['serial_code']} was already used. RP Name: `{rp['rp_name']}`"
-                                          f"\n**Hosted by {rp['main_host']}. Please use a different Serial Code.**")
+                    return await ctx.send(f"**Serial code {rp['serial_code']} was already used. "
+                                          f"RP Name: `{rp['rp_name']}`"
+                                          f"\n**Hosted by {rp['main_host']}. Please use a different "
+                                          f"Serial Code.**")
                 if rp_name.lower() == str(rp["rp_name"]).lower() and not int(rp["ended"]):
-                    return await ctx.send(f"**{rp['rp_name']} is already in the Database and {ongoing_note} under the serial code:** `{rp['serial_code']}`**"
+                    return await ctx.send(f"**{rp['rp_name']} is already in the Database and "
+                                          f"{ongoing_note} under the serial code:** "
+                                          f"`{rp['serial_code']}`**"
                                           f"\n**Hosted by {rp['main_host']} {local_note}.**")
 
             try:
                 target = await bot.fetch_user(int(main_host_id))
             except discord.NotFound as p:
-                return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the server.**")
+                return await ctx.send(f"`{p}`\n**Please input a valid Discord ID that is in the "
+                                      "server.**")
 
             irl_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(rp_start_date)))
             other_timezones = str(irl_time)
@@ -687,17 +816,45 @@ class Functionality:
             noted_time = time.strftime('%d-%B-%Y %H:%M:%S', time.gmtime(int(rp_start_date)))
 
             with open("rp_collection.csv", "a") as file:
-                fieldnames = ["serial_code", "approved", "approved_id", "local", "rp_name", "main_host",
-                              "main_host_id", "rp_start_date", "rp_start_time", "rp_duration", "doc", "sign_up", "ongoing", "ended"]
+                fieldnames = [
+                    "serial_code",
+                    "approved",
+                    "approved_id",
+                    "local",
+                    "rp_name",
+                    "main_host",
+                    "main_host_id",
+                    "rp_start_date",
+                    "rp_start_time",
+                    "rp_duration",
+                    "doc",
+                    "sign_up",
+                    "ongoing",
+                    "ended"]
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writerow({"serial_code": serial_code, "approved": ctx.author.name, "approved_id": ctx.author.id, "local": local, "rp_name": rp_name, "main_host": target.name,
-                                 "main_host_id": main_host_id, "rp_start_date": rp_start_date, "rp_start_time": f"{hour_split[0]}:{hour_split[1]}",
-                                 "rp_duration": rp_duration, "doc": doc, "sign_up": sign_up, "ongoing": ongoing, "ended": ended})
+                writer.writerow({
+                    "serial_code": serial_code,
+                    "approved": ctx.author.name,
+                    "approved_id": ctx.author.id,
+                    "local": local,
+                    "rp_name": rp_name,
+                    "main_host": target.name,
+                    "main_host_id": main_host_id,
+                    "rp_start_date": rp_start_date,
+                    "rp_start_time": f"{hour_split[0]}:{hour_split[1]}",
+                    "rp_duration": rp_duration,
+                    "doc": doc,
+                    "sign_up": sign_up,
+                    "ongoing": ongoing,
+                    "ended": ended
+                    })
 
-            await ctx.channel.send(f'**{rp_name} ({serial_code}) was inserted to the Database; hosted by {target.name}.**'
+            await ctx.channel.send(f'**{rp_name} ({serial_code}) was inserted to the Database; '
+                                   f'hosted by {target.name}.**'
                                    f'\n**First Session Date: {noted_time}**'
                                    f'\n`Doc:` {doc}')
-            await target.send(f'**Your RP; {rp_name} ({serial_code}) was inserted to the Database; approved by {ctx.author.name}.**'
+            await target.send(f'**Your RP; {rp_name} ({serial_code}) was inserted to the Database; '
+                              f'approved by {ctx.author.name}.**'
                               f'\n**You may announce it now and ensure to include the serial code.**'
                               f'\n**First Session Date: {noted_time}**')
 
@@ -707,7 +864,8 @@ class Functionality:
             help=('Returns a profile of an RP. There is only one required argument.'
                   '\nArguments: $rp_profile <_id>'
                   '\nExample: $rp_profile HN'
-                  '\n\n<_id> is the Serial Code of said RP. It is case sensitive, so make sure it is correct.')
+                  '\n\n<_id> is the Serial Code of said RP. It is case sensitive, so make sure it is '
+                  'correct.')
         )
         async def rp_profile(ctx: commands.Context, _id):
             if not _validate_command(ctx):
@@ -836,7 +994,7 @@ class Functionality:
 
             string_inform = None
 
-            if not admin_check(ctx):
+            if not _check_bot_admin(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             initial_check = rp_profile_check(_id)
@@ -852,8 +1010,10 @@ class Functionality:
             update = update[1]
 
             for rp in update:
-                string_inform = f"**You have updated {rp['rp_name']} ({rp['serial_code']}) by {change_dict[value]}!**"
-
+                string_inform = (
+                    f"**You have updated {rp['rp_name']} ({rp['serial_code']}) by "
+                    f"{change_dict[value]}!**"
+                    )
             return await ctx.send(string_inform)
 
         @bot.command(
@@ -958,17 +1118,17 @@ class Functionality:
             hour_split = other_timezones[1].split(":")
             hour_change = int(hour_split[0])
             text_ = [
-                f"**-- Standard Time --**",
+                "**-- Standard Time --**",
                 f"**EST**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
                 f"**CST**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
                 f"**MST**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
                 f"**PST**: {timezone_time_check(hour_change, -8)}:{hour_split[1]}:{hour_split[2]}",
-                f"**-- Daylight Time --**",
+                "**-- Daylight Time --**",
                 f"**EDT**: {timezone_time_check(hour_change, -4)}:{hour_split[1]}:{hour_split[2]}",
                 f"**CDT**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
                 f"**MDT**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
                 f"**PDT**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
-                f"**-- Europe Time --**",
+                "**-- Europe Time --**",
                 f"**UTC-1**: {timezone_time_check(hour_change, -1)}:{hour_split[1]}:{hour_split[2]}",
                 f"**UTC**: {timezone_time_check(hour_change, 0)}:{hour_split[1]}:{hour_split[2]}",
                 f"**UTC+1**: {timezone_time_check(hour_change, 1)}:{hour_split[1]}:{hour_split[2]}",
@@ -989,11 +1149,13 @@ class Functionality:
         @bot.command(
             name='utc',
             brief='Lists the time for UTC timezones',
-            help=('Lists the time for UTC timezones. There is an optional argument; if you input an epoch/unix time after the command, '
+            help=('Lists the time for UTC timezones. There is an optional argument; if you input an '
+                  'epoch/unix time after the command, '
                   'you will get said time instead. Date format: YYYY-MM-DD.'
                   '\nArguments: $utc <seconds>'
                   '\nExample: $utc 1'
-                  '\n\n<seconds> is an optional field; it is an epoch/unix second argument and MUST be an integer.')
+                  '\n\n<seconds> is an optional field; it is an epoch/unix second argument and MUST '
+                  'be an integer.')
         )
         async def utc(ctx: commands.Context, seconds=None):
             if not _validate_command(ctx):
@@ -1054,7 +1216,8 @@ class Functionality:
         @ban_profile.error
         async def ban_profile_error(ctx: commands.Context, error):
             if isinstance(error, commands.BadBoolArgument):
-                return await ctx.send("`Please input <_all> as either 0, 1 or False, True respectively.`")
+                return await ctx.send("`Please input <_all> as either 0, 1 or False, True "
+                                      "respectively.`")
 
             if isinstance(error, commands.BadArgument):
                 return await ctx.send("`Please input <_id> as an integer, their Discord ID.`")
@@ -1062,8 +1225,8 @@ class Functionality:
         @add_roleplay.error
         async def add_roleplay_error(ctx: commands.Context, error):
             if isinstance(error, commands.BadArgument):
-                return await ctx.send("`Please input <main_host_id>, <rp_start_date>, <rp_duration>, <local>, "
-                                      "<sign_up>, <ongoing>, and <ended> as integers.`")
+                return await ctx.send("`Please input <main_host_id>, <rp_start_date>, <rp_duration>, "
+                                      "<local>, <sign_up>, <ongoing>, and <ended> as integers.`")
 
         @ban_id.error
         async def ban_id_error(ctx: commands.Context, error):

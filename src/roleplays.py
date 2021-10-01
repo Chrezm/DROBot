@@ -27,7 +27,7 @@ async def command_add_roleplay(bot, guild_details, ctx: commands.Context, rp_nam
             return await ctx.send(f"`Please input a valid integer. {arg} is not valid.`")
 
     if not serial_code:
-        serial_code = create_code()
+        serial_code = _create_code()
 
     for rp in rp_list:
         local_note = "in DRO servers"
@@ -107,7 +107,7 @@ async def command_add_roleplay(bot, guild_details, ctx: commands.Context, rp_nam
 
 
 async def command_rp_profile(bot, guild_details, ctx: commands.Context, _id):
-    profile = rp_profile_check(_id)
+    profile = _rp_profile_check(_id)
 
     embed = None
     bool_string = {"0": False, "1": True}
@@ -147,10 +147,10 @@ async def command_rp_profile_filter(bot, guild_details, ctx: commands.Context, v
         return
 
     rp_dict = {
-        0: rp_profile_check_sign_up(value),
-        1: rp_profile_check_ongoing(value),
-        2: rp_profile_check_ended(value),
-        3: rp_profile_check_all(value)
+        0: _rp_profile_check_sign_up(value),
+        1: _rp_profile_check_ongoing(value),
+        2: _rp_profile_check_ended(value),
+        3: _rp_profile_check_all(value)
     }
 
     bool_string = {"0": False, "1": True}
@@ -204,14 +204,14 @@ async def command_rp_change_status(bot, guild_details, ctx: commands.Context, _i
 
     string_inform = None
 
-    initial_check = rp_profile_check(_id)
+    initial_check = _rp_profile_check(_id)
 
     if not initial_check:
         await ctx.send('`Invalid RP Serial Code, cannot update.`')
         return
 
     try:
-        update = update_rp_list_choice(_id, value)
+        update = _update_rp_list_choice(_id, value)
     except KeyError:
         await ctx.send("`Input a valid value from 0-3 only.`")
         return
@@ -228,7 +228,7 @@ async def command_rp_change_status(bot, guild_details, ctx: commands.Context, _i
 
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
-def create_code() -> str:
+def _create_code() -> str:
     lowercase_letter = string.ascii_lowercase
     uppercase_letter = string.ascii_uppercase
     digits = str(string.digits)
@@ -335,7 +335,7 @@ def update_rp_list() -> List:
     return updated_rp_list
 
 
-def update_rp_list_choice(_id, val) -> Tuple[List, List]:
+def _update_rp_list_choice(_id, val) -> Tuple[List, List]:
     change_dict = {
         0: [0, 0, 0],  # Close Sign Ups
         1: [1, 0, 0],  # Open Sign Ups
@@ -402,7 +402,7 @@ def update_rp_list_choice(_id, val) -> Tuple[List, List]:
     return updated_rp_list, inform_update
 
 
-def rp_profile_check(_id) -> List:
+def _rp_profile_check(_id) -> List:
     rp_list = rp_id_check()
     found = []
 
@@ -413,7 +413,7 @@ def rp_profile_check(_id) -> List:
     return found
 
 
-def rp_profile_check_sign_up(val) -> List:
+def _rp_profile_check_sign_up(val) -> List:
     if val != 0:
         return
 
@@ -427,7 +427,7 @@ def rp_profile_check_sign_up(val) -> List:
     return found
 
 
-def rp_profile_check_ongoing(val) -> List:
+def _rp_profile_check_ongoing(val) -> List:
     if val != 1:
         return
 
@@ -441,7 +441,7 @@ def rp_profile_check_ongoing(val) -> List:
     return found
 
 
-def rp_profile_check_ended(val) -> List:
+def _rp_profile_check_ended(val) -> List:
     if val != 2:
         return
 
@@ -455,7 +455,7 @@ def rp_profile_check_ended(val) -> List:
     return found
 
 
-def rp_profile_check_all(val) -> List:
+def _rp_profile_check_all(val) -> List:
     if val != 3:
         return
 

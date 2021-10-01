@@ -43,11 +43,11 @@ async def command_ban_id(bot, guild_details, ctx: commands.Context, user_id: int
             })
 
     if ban_length < 86400:
-        days = second_to_hour(ban_length)
+        days = _second_to_hour(ban_length)
         word_ = f"{days} hours"
 
     else:
-        days = second_to_day(ban_length)
+        days = _second_to_day(ban_length)
         word_ = f"{days} days"
 
     await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the '
@@ -62,7 +62,7 @@ async def command_unban(bot, guild_details, ctx: commands.Context, _id: int):
     if not initial_check:
         return await ctx.send("`Invalid Discord ID.`")
 
-    updated_list = update_unban(_id)
+    updated_list = _update_unban(_id)
     updated_list = updated_list[1]
 
     for user in updated_list:
@@ -86,7 +86,7 @@ async def command_ban_profile(bot, guild_details, ctx: commands.Context, _id: in
             f'**Discord Name**: {user["discord_name"]}\n'
             f'**Discord ID**: {user["discord_id"]}\n'
             f'**Ban Date**: {date_}\n'
-            f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+            f'**Ban Length**: {_second_to_day(int(user["ban_length"]))}\n'
             f'**Reason**: {user["reason"]}\n'
             f'**Ban Ended**: {user["ended"]}'
         )
@@ -115,7 +115,7 @@ async def command_ban_profile_all(bot, guild_details, ctx: commands.Context):
                 f'**Discord Name**: {user["discord_name"]}\n'
                 f'**Discord ID**: {user["discord_id"]}\n'
                 f'**Ban Date**: {date_}\n'
-                f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                f'**Ban Length**: {_second_to_day(int(user["ban_length"]))}\n'
                 f'**Reason**: {user["reason"]}\n'
                 f'**Ban Ended**: {user["ended"]}'
             )
@@ -129,7 +129,7 @@ async def command_ban_profile_all(bot, guild_details, ctx: commands.Context):
 
 
 async def command_ban_list_update(bot, guild_details, ctx: commands.Context):
-    updated_list = update_ban_list()[1]
+    updated_list = _update_ban_list()[1]
 
     if updated_list:
         for user in updated_list:
@@ -167,13 +167,13 @@ def ban_id_check():
 
 
 # Converts Seconds to Days
-def second_to_day(second: int) -> int:
+def _second_to_day(second: int) -> int:
     answer = second / 86400
     return round(answer)
 
 
 # Converts Seconds to Hours
-def second_to_hour(second: int) -> int:
+def _second_to_hour(second: int) -> int:
     answer = second / 3600
     return round(answer)
 
@@ -189,7 +189,7 @@ def _browse_ban_profile(user_id: int = None) -> List:
     return found
 
 
-def update_unban(_id):
+def _update_unban(_id):
     ban_ids = ban_id_check()
     updated_ban_list = list()
     inform_ban_list = list()  # This is to inform players when their ban is over.
@@ -229,7 +229,7 @@ def update_unban(_id):
     return updated_ban_list, inform_ban_list
 
 
-def update_ban_list():
+def _update_ban_list():
     ban_ids = ban_id_check()
     updated_ban_list = list()
     inform_ban_list = list()  # This is to inform players when their ban is over.
@@ -279,7 +279,7 @@ def update_ban_list():
 
 
 async def inform_update_list(bot):
-    updated_list = update_ban_list()[1]
+    updated_list = _update_ban_list()[1]
 
     if updated_list:
         for user in updated_list:

@@ -39,21 +39,21 @@ async def command_timezone(bot, guild_details, ctx: commands.Context, seconds=No
     hour_change = int(hour_split[0])
     text_ = [
         "**-- Standard Time --**",
-        f"**EST**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
-        f"**CST**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
-        f"**MST**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
-        f"**PST**: {timezone_time_check(hour_change, -8)}:{hour_split[1]}:{hour_split[2]}",
+        f"**EST**: {_timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
+        f"**CST**: {_timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
+        f"**MST**: {_timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
+        f"**PST**: {_timezone_time_check(hour_change, -8)}:{hour_split[1]}:{hour_split[2]}",
         "**-- Daylight Time --**",
-        f"**EDT**: {timezone_time_check(hour_change, -4)}:{hour_split[1]}:{hour_split[2]}",
-        f"**CDT**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
-        f"**MDT**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
-        f"**PDT**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
+        f"**EDT**: {_timezone_time_check(hour_change, -4)}:{hour_split[1]}:{hour_split[2]}",
+        f"**CDT**: {_timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
+        f"**MDT**: {_timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
+        f"**PDT**: {_timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
         "**-- Europe Time --**",
-        f"**UTC-1**: {timezone_time_check(hour_change, -1)}:{hour_split[1]}:{hour_split[2]}",
-        f"**UTC**: {timezone_time_check(hour_change, 0)}:{hour_split[1]}:{hour_split[2]}",
-        f"**UTC+1**: {timezone_time_check(hour_change, 1)}:{hour_split[1]}:{hour_split[2]}",
-        f"**UTC+2**: {timezone_time_check(hour_change, 2)}:{hour_split[1]}:{hour_split[2]}",
-        f"**UTC+3**: {timezone_time_check(hour_change, 3)}:{hour_split[1]}:{hour_split[2]}",
+        f"**UTC-1**: {_timezone_time_check(hour_change, -1)}:{hour_split[1]}:{hour_split[2]}",
+        f"**UTC**: {_timezone_time_check(hour_change, 0)}:{hour_split[1]}:{hour_split[2]}",
+        f"**UTC+1**: {_timezone_time_check(hour_change, 1)}:{hour_split[1]}:{hour_split[2]}",
+        f"**UTC+2**: {_timezone_time_check(hour_change, 2)}:{hour_split[1]}:{hour_split[2]}",
+        f"**UTC+3**: {_timezone_time_check(hour_change, 3)}:{hour_split[1]}:{hour_split[2]}",
     ]
 
     text_ = "\n".join(text_)
@@ -67,7 +67,7 @@ async def command_timezone(bot, guild_details, ctx: commands.Context, seconds=No
     await ctx.send(embed=embed)
 
 
-async def commands_utc(bot, guild_details, ctx: commands.Context, seconds=None):
+async def command_utc(bot, guild_details, ctx: commands.Context, seconds=None):
     if not seconds:
         seconds = round(time.time())
 
@@ -118,7 +118,7 @@ async def commands_utc(bot, guild_details, ctx: commands.Context, seconds=None):
 
     await ctx.send(embed=embed)
 
-def timezone_time_check(hour_change: int, inc_time: int) -> int:
+def _timezone_time_check(hour_change: int, inc_time: int) -> int:
     hour_change = hour_change + inc_time
 
     if hour_change > 23:

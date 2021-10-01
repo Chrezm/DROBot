@@ -77,7 +77,6 @@ class Functionality:
         # This is a task loop, where it will self-update every 10 minutes.
         @tasks.loop(seconds=600.0)
         async def second_passing():
-            print(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(round(time.time()))))
             update_rp_list()
             await inform_update_list()
 
@@ -166,14 +165,13 @@ class Functionality:
 
         # Checks Admin Status
         def admin_check(ctx):
-            admin_roles = [role for role in ctx.guild.roles if role.permissions.administrator]
-            user_roles = ctx.author.roles
-            dro_bot_maintainer_role = ctx.guild.get_role(892524724230434826)
-
-            for role in user_roles:
-                if role == dro_bot_maintainer_role:
+            # Bot Maintainer always gets privilege
+            for role in ctx.author.roles:
+                if role == guild_details.bot_maintainer_role_id:
                     return True
 
+            # Otherwise, check if user has admin privilges
+            admin_roles = [role for role in ctx.guild.roles if role.permissions.administrator]
             for admin_role in admin_roles:
                 if admin_role in ctx.author.roles:
                     return True

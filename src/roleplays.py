@@ -11,7 +11,7 @@ import discord
 from discord.ext import commands
 
 
-async def command_add_roleplay(bot, ctx: commands.Context, rp_name, main_host_id: int,
+async def command_add_roleplay(bot, guild_details, ctx: commands.Context, rp_name, main_host_id: int,
                                rp_start_date: int, rp_duration: int, doc, serial_code=None,
                                local: int = 1, sign_up: int = 1, ongoing: int = 0, ended: int = 0):
     rp_list = rp_id_check()
@@ -106,7 +106,7 @@ async def command_add_roleplay(bot, ctx: commands.Context, rp_name, main_host_id
                       f'\n**First Session Date: {noted_time}**')
 
 
-async def command_rp_profile(bot, ctx: commands.Context, _id):
+async def command_rp_profile(bot, guild_details, ctx: commands.Context, _id):
     profile = rp_profile_check(_id)
 
     embed = None
@@ -139,7 +139,7 @@ async def command_rp_profile(bot, ctx: commands.Context, _id):
     await ctx.send(embed=embed)
 
 
-async def command_rp_profile_filter(bot, ctx: commands.Context, value):
+async def command_rp_profile_filter(bot, guild_details, ctx: commands.Context, value):
     try:
         value = int(value)
     except ValueError:
@@ -188,7 +188,7 @@ async def command_rp_profile_filter(bot, ctx: commands.Context, value):
         await ctx.send(embed=embed)
 
 
-async def command_rp_change_status(bot, ctx: commands.Context, _id, value="0"):
+async def command_rp_change_status(bot, guild_details, ctx: commands.Context, _id, value="0"):
     change_dict = {
         0: "closing sign ups",
         1: "opening sign ups",

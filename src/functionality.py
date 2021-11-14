@@ -122,6 +122,11 @@ class Functionality:
                     await user.add_roles(muted_role)
                     await message.author.send(f'You are now Muted for spamming reasons.')
 
+                await _relay_message(
+                    message,
+                    prefix=guild_details.relaying_prefix,
+                    suffix=guild_details.relaying_suffix)
+                
                 await message.delete()
 
             if message.channel.name in guild_details.relaying_channels:

@@ -100,9 +100,34 @@ class Functionality:
         async def on_message(message):
             # Looks through the ban_id.csv
             ban_id_ = ban_id_check()
+            channel_id = 899708230069006407
+            muted_role_id = 909500197833416744
 
             if message.author == bot.user:
                 return
+
+            if message.channel.id == channel_id:
+                muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
+
+                user = message.author
+                has_muted_role = False
+
+                for role in user.roles:
+                    if role.id == muted_role_id:
+                        has_muted_role = True
+
+                if has_muted_role:
+                    await message.author.send(f'You are Muted from this server. You cannot send any messages.')
+                else:
+                    await user.add_roles(muted_role)
+                    await message.author.send(f'You are now Muted for spamming reasons.')
+
+                await _relay_message(
+                    message,
+                    prefix=guild_details.relaying_prefix,
+                    suffix=guild_details.relaying_suffix)
+                
+                await message.delete()
 
             if message.channel.name in guild_details.relaying_channels:
                 # Right here, it will delete the message and notify the user who tried using the bot that they are banned.

@@ -5,6 +5,7 @@ import csv
 import string
 import random
 import asyncio
+from collections import Counter
 from discord.ext import commands, tasks
 
 from typing import Dict
@@ -38,6 +39,26 @@ def ban_id_check():
 
     return ban_list
 
+# This is the initial check for msg_list.csv and obtaining its data.
+def msg_check():
+    msg_list = None
+    try:
+        with open("msg_list.csv", "r+", newline="") as file:
+            reader = csv.DictReader(file)
+            msg_list = []
+            for x in reader:
+                msg_list.append(x)
+
+            return msg_list
+
+    except FileNotFoundError:
+        with open("msg_list.csv", "w") as file:
+            print("msg_list.csv does not exist; the bot will now create one...")
+            fieldnames = ["discord_id", "discord_name", "link", "message"]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+
+    return msg_list
 
 # This is the initial check for rp_collection.csv and obtaining its data.
 def rp_id_check():
@@ -69,6 +90,7 @@ class Functionality:
             # This is to start the checks and if said file does not exist, will create one.
             ban_id_check()
             rp_id_check()
+            msg_check()
 
             # This is to begin the task loop.
             second_passing.start()
@@ -77,8 +99,13 @@ class Functionality:
         # This is a task loop, where it will self-update every 10 minutes.
         @tasks.loop(seconds=600.0)
         async def second_passing():
-            print(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(round(time.time()))))
             update_rp_list()
+
+            with open("msg_list.csv", "w") as file:
+                fieldnames = ["discord_id", "discord_name", "link", "message"]
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+                writer.writeheader()
+
             await inform_update_list()
 
         # This will execute before the function <second_passing> will run.
@@ -102,10 +129,15 @@ class Functionality:
             ban_id_ = ban_id_check()
             channel_id = 899708230069006407
             muted_role_id = 909500197833416744
+            regex_url = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+            urls = re.findall(regex_url, message.content.lower())
 
             if message.author == bot.user:
                 return
-
+            
+            if urls:
+                await msg_update(message.author.id, message.author.name, urls, message.content, message)
+            
             if message.channel.id == channel_id:
                 muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
 
@@ -214,6 +246,43 @@ class Functionality:
         def second_to_hour(second: int):
             answer = second / 3600
             return round(answer)
+        
+        # This is for the message checks because bots are smart nowadays.
+        async def msg_update(_id, name, link, message, user):
+            with open("msg_list.csv", "a") as file:
+                fieldnames = ["discord_id", "discord_name", "link", "message"]
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+                writer.writerow({"discord_id": _id, "discord_name": name, "link": link, "message": message.lower()})
+
+            return await msg_counter(_id, user)
+
+        async def msg_counter(_id, person):
+            muted_role_id = 909500197833416744
+
+            msgs = msg_check()
+            msg_list = list()
+
+            for m in msgs:
+                if str(_id) == m['discord_id']:
+                    msg_list.append(m['message'])
+
+            counter = Counter(msg_list)
+            for k, v in counter.items():
+                if v >= 3:
+                    muted_role = discord.utils.get(person.author.guild.roles,
+                                                   name="Muted")
+
+                    user = person.author
+                    has_muted_role = False
+
+                    for role in user.roles:
+                        if role.id == muted_role_id:
+                            has_muted_role = True
+
+                    if not has_muted_role:
+                        await user.add_roles(muted_role)
+                        await person.author.send(f'You are now Muted for spamming reasons.')
+            return
 
         def ban_profile_check(_id):
             ban_list = ban_id_check()

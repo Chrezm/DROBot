@@ -5,6 +5,7 @@ import csv
 import string
 import random
 import asyncio
+import re
 from collections import Counter
 from discord.ext import commands, tasks
 

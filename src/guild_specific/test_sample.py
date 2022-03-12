@@ -19,3 +19,6 @@ class Test_discord():
 
     rp_active_role_name = 'epic role'
     rp_active_role_id = 816054356091994164
+
+    dev_tester_role_name = 'dev tester'
+    dev_tester_role_id = 892586465907855400

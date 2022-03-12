@@ -1041,7 +1041,26 @@ class Functionality:
 
             final_result = f"`<t:{time__}{text_add}>`"
             return final_result
-        
+
+        async def _optin_role(ctx: commands.Context, role_name: str, role_id: int):
+            if not _validate_command(ctx):
+                return
+            role = discord.utils.get(ctx.message.guild.roles, name=role_name)
+
+            user = ctx.author
+            has_role = False
+
+            for user_role in user.roles:
+                if user_role.id == role_id:
+                    has_role = True
+
+            if has_role:
+                await user.remove_roles(role)
+                await ctx.send(f'Removed role **{role_name}**.')
+            else:
+                await user.add_roles(role)
+                await ctx.send(f'Added role **{role_name}**.')
+
         @bot.command(
             name='rpactive',
             brief='Changes your RP Active status',
@@ -1051,25 +1070,22 @@ class Functionality:
                   '\nExample: $rpactive'),
         )
         async def rpactive(ctx: commands.Context):
-            if not _validate_command(ctx):
-                return
+            await _optin_role(ctx,
+                              guild_details.rp_active_role_name,
+                              guild_details.rp_active_role_id)
 
-            rp_active_role = discord.utils.get(ctx.message.guild.roles,
-                                               name=guild_details.rp_active_role_name)
-
-            user = ctx.author
-            has_rp_active = False
-
-            for role in user.roles:
-                if role.id == guild_details.rp_active_role_id:
-                    has_rp_active = True
-
-            if has_rp_active:
-                await user.remove_roles(rp_active_role)
-                await ctx.send(f'Removed role **{guild_details.rp_active_role_name}**.')
-            else:
-                await user.add_roles(rp_active_role)
-                await ctx.send(f'Added role **{guild_details.rp_active_role_name}**.')
+        @bot.command(
+            name='devtester',
+            brief='Changes your Dev Tester status',
+            help=('If you did not have the Dev Tester role, the bot will give it to you. If you '
+                  'already had it, the bot will take it away from you.'
+                  '\nArguments: $devtester'
+                  '\nExample: $devtester'),
+        )
+        async def devtester(ctx: commands.Context):
+            await _optin_role(ctx,
+                              guild_details.dev_tester_role_name,
+                              guild_details.dev_tester_role_id)
 
         @bot.command(
             name='timezone',

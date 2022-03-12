@@ -999,7 +999,7 @@ class Functionality:
                   '\nExample: $hammertime UTC+8 13-3-2022 5:00:00'
                   '\nRemainder Example: $hammertime UTC+8 13-3-2022 5:00:00 1'),
         )
-        async def hammertime(timezone_: str, date_, time_, _remain=0):
+        async def hammertime(ctx: commands.Context, timezone_: str, date_, time_, _remain=0):
             if not _validate_command(ctx):
                 return
 

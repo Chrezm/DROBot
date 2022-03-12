@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import discord
 import time
+import calendar
+import datetime
 import csv
 import string
 import random
@@ -10,13 +12,32 @@ from collections import Counter
 from discord.ext import commands, tasks
 
 from typing import Dict
-
+from src.timezone_list import timezone_list
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
 def create_code():
     lowercase_letter, uppercase_letter, digits = string.ascii_lowercase, string.ascii_uppercase, str(string.digits)
     code = ''.join(random.sample(lowercase_letter + uppercase_letter + digits, 12))
     return code
+
+
+# Checking Value for Command Hammertime
+def check_value(list_):
+    proceed = list()
+    new_list = list()
+    note_ = str()
+    progress = True
+
+    for _ in list_:
+        try:
+            _ = _.strip()
+            new_ = int(_)
+            new_list.append(new_)
+        except Exception as e:
+            progress, note_ = False, e
+
+    proceed.append([progress, note_])
+    return proceed, new_list
 
 
 # This is the initial check for ban_ids.csv and obtaining its data.
@@ -966,7 +987,61 @@ class Functionality:
                 return
 
             await ctx.channel.send('Pong.')
+            
+        @bot.command(
+            name='hammertime',
+            brief='Returns Hammertime Code. Can return remainder, as well.',
+            help=('Returns Hammertime Code. Can return remainder, as well. For remainder, simply add a "1" at the end of the command and is an optional argument.\n'
+                  'How this works is the DATE Format must be dashes [-] and TIME Format must be colons [:]. For DATE, it is DD-MM-YYYY. TIME uses the 24 Hour System\n'
+                  'An example would be: Date = 31-12-2021 | Time = 10:00:00\n'
+                  'Furthermore, at the very start, put a Timezone Abbreviation. For example: UTC, EST, MST, PST, GMT+2 or UTC+4.'
+                  '\nArguments: $hammertime <timezone_abbreviation> <date> <time> <output_remainder_(optional)>'
+                  '\nExample: $hammertime UTC+8 13-3-2022 5:00:00'
+                  '\nRemainder Example: $hammertime UTC+8 13-3-2022 5:00:00 1'),
+        )
+        async def hammertime(timezone_: str, date_, time_, _remain=0):
+            if not _validate_command(ctx):
+                return
 
+            try:
+                _remain = int(_remain)
+                if _remain not in (0, 1):
+                    return await ctx.send("Please input a valid 0 | 1 at the end. [{}] is not a valid argument.".format(_remain))
+                else:
+                    text_add = ":R" if _remain else ":F"
+            except ValueError:
+                return await ctx.send("Please input a valid 0 | 1 at the end. [{}] is not a valid argument.".format(_remain))
+
+            _TIMEZONE = timezone_list()
+            if timezone_.upper() in _TIMEZONE:
+                hour_add = _TIMEZONE[timezone_.upper()]
+            else:
+                return await ctx.send("Please input a valid timezone. [{}] is not a valid timezone.".format(timezone.upper()))
+
+            date_list, time_list = date_.split("-"), time_.split(":")
+
+            if not len(date_list) == 3:
+                return print("Date Formatting Incorrect, please use dashes [-].")
+            if not len(time_list) == 3:
+                return print("Time Formatting Incorrect, please use colons [:].")
+
+            # Checking for Human Error
+            check_date, check_time = check_value(date_list), check_value(time_list)
+            ndv, ntv = check_date[1], check_time[1]
+            new_date_list, new_time_list = check_date[0], check_time[0]
+            check_list = new_date_list, new_time_list
+
+            for err in check_list:
+                if not err[0][0]:
+                    return await ctx.send(f"**An error occured:** {err[0][1]}")
+
+            new_hour = ntv[0] - hour_add
+            date_tuple = datetime.datetime(ndv[2], ndv[1], ndv[0], new_hour, ntv[1], ntv[2])
+            time__ = calendar.timegm(date_tuple.timetuple())
+
+            final_result = f"`<t:{time__}{text_add}>`"
+            return final_result
+        
         @bot.command(
             name='rpactive',
             brief='Changes your RP Active status',

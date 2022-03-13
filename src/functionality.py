@@ -993,7 +993,7 @@ class Functionality:
             brief='Returns Hammertime Code. Can return remainder, as well.',
             help=('Returns Hammertime Code. Can return remainder, as well. For remainder, simply add a "1" at the end of the command and is an optional argument.\n'
                   'How this works is the DATE Format must be dashes [-] and TIME Format must be colons [:]. For DATE, it is DD-MM-YYYY. TIME uses the 24 Hour System\n'
-                  'An example would be: Date = 31-12-2021 | Time = 10:00:00\n'
+                  'Use Correct Time Formatting and Numbers, otherwise it will not work. An example would be: Date = 31-12-2021 | Time = 10:00:00\n'
                   'Furthermore, at the very start, put a Timezone Abbreviation. For example: UTC, EST, MST, PST, GMT+2 or UTC+4.'
                   '\nArguments: $hammertime <timezone_abbreviation> <date> <time> <output_remainder_(optional)>'
                   '\nExample: $hammertime UTC+8 13-3-2022 5:00:00'
@@ -1002,7 +1002,7 @@ class Functionality:
         async def hammertime(ctx: commands.Context, timezone_: str, date_, time_, _remain=0):
             if not _validate_command(ctx):
                 return
-
+            
             try:
                 _remain = int(_remain)
                 if _remain not in (0, 1):
@@ -1016,14 +1016,14 @@ class Functionality:
             if timezone_.upper() in _TIMEZONE:
                 hour_add = _TIMEZONE[timezone_.upper()]
             else:
-                return await ctx.send("Please input a valid timezone. [{}] is not a valid timezone.".format(timezone.upper()))
+                return await ctx.send("Please input a valid timezone. [{}] is not a valid timezone.".format(timezone_.upper()))
 
             date_list, time_list = date_.split("-"), time_.split(":")
 
             if not len(date_list) == 3:
-                return print("Date Formatting Incorrect, please use dashes [-].")
+                return await ctx.send("Date Formatting Incorrect, please use dashes [-].")
             if not len(time_list) == 3:
-                return print("Time Formatting Incorrect, please use colons [:].")
+                return await ctx.send("Time Formatting Incorrect, please use colons [:].")
 
             # Checking for Human Error
             check_date, check_time = check_value(date_list), check_value(time_list)
@@ -1033,14 +1033,18 @@ class Functionality:
 
             for err in check_list:
                 if not err[0][0]:
-                    return await ctx.send(f"**An error occured:** {err[0][1]}")
+                    return await ctx.send(f"**An error occured:** {err[0][1].title()}")
 
-            new_hour = ntv[0] - hour_add
-            date_tuple = datetime.datetime(ndv[2], ndv[1], ndv[0], new_hour, ntv[1], ntv[2])
-            time__ = calendar.timegm(date_tuple.timetuple())
+            new_hour = ntv[0]
+            try:
+                date_tuple = datetime.datetime(ndv[2], ndv[1], ndv[0], new_hour, ntv[1], ntv[2])
+                time__ = calendar.timegm(date_tuple.timetuple())
+                time__ -= hour_add * 3600
+            except ValueError as f:
+                return await ctx.send(f"**An error has occured:** {str(f).title()}")
 
-            final_result = f"`<t:{time__}{text_add}>`"
-            return final_result
+            final_result = f"**Copy paste this code to activate the Hammertime Code:** \n-> `<t:{time__}{text_add}>`"
+            return await ctx.send(final_result)
 
         async def _optin_role(ctx: commands.Context, role_name: str, role_id: int):
             if not _validate_command(ctx):

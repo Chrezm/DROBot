@@ -11,8 +11,10 @@ import re
 from collections import Counter
 from discord.ext import commands, tasks
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from src.timezone_list import timezone_list
+
+ban_ids_type = List[Dict[Union[str, Any], Union[str, Any]]]
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
 def create_code():
@@ -41,7 +43,7 @@ def check_value(list_):
 
 
 # This is the initial check for ban_ids.csv and obtaining its data.
-def ban_id_check() -> List[Dict[str | Any, str | Any]]:
+def ban_id_check() -> ban_ids_type:
     ban_list = None
     try:
         with open("ban_ids.csv", "r+", newline="") as file:
@@ -121,14 +123,14 @@ class Functionality:
         # This is a task loop, where it will self-update every 10 minutes.
         @tasks.loop(seconds=600.0)
         async def second_passing():
-            update_rp_list()
+            _update_rp_list()
 
             with open("msg_list.csv", "w") as file:
                 fieldnames = ["discord_id", "discord_name", "link", "message"]
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
 
-            await inform_update_list()
+            await _inform_update_list()
 
         # This will execute before the function <second_passing> will run.
         @second_passing.before_loop
@@ -167,7 +169,7 @@ class Functionality:
             regex_url = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
             urls = re.findall(regex_url, message.content.lower())
             if urls:
-                await msg_update(message.author.id, message.author.name, urls, message.content, message)
+                await _msg_update(message.author.id, message.author.name, urls, message.content, message)
 
         async def _check_sent_in_honeypot_channel(message: discord.Message) -> bool:
             channel_id = 899708230069006407
@@ -197,7 +199,7 @@ class Functionality:
             await message.delete()
             return True
 
-        async def _check_if_banned(message: discord.Message, ban_id_) -> bool:
+        async def _check_if_banned(message: discord.Message, ban_id_: ban_ids_type) -> bool:
             # Right here, it will delete the message and notify the user who tried using the bot that they are banned.
             for user in ban_id_:
                 if message.author.id == user["discord_id"] and not int(user["ended"]):
@@ -207,7 +209,8 @@ class Functionality:
 
             return False
 
-        async def _check_sent_in_relaying_channel(message: discord.Message, ban_id_) -> bool:
+        async def _check_sent_in_relaying_channel(message: discord.Message,
+                                                  ban_id_: ban_ids_type) -> bool:
             if message.channel.name not in guild_details.relaying_channels:
                 return False
 
@@ -267,7 +270,7 @@ class Functionality:
             await to_channel.send(final_message)
 
         # Checks Admin Status
-        def admin_check(ctx):
+        def _admin_check(ctx: commands.Context):
             admin_roles = [role for role in ctx.guild.roles if role.permissions.administrator]
             user_roles = ctx.author.roles
             dro_bot_maintainer_role = ctx.guild.get_role(892524724230434826)
@@ -283,25 +286,25 @@ class Functionality:
             return None
 
         # Converts Seconds to Days
-        def second_to_day(second: int):
+        def _second_to_day(second: int) -> int:
             answer = second / 86400
             return round(answer)
 
         # Converts Seconds to Hours
-        def second_to_hour(second: int):
+        def _second_to_hour(second: int) -> int:
             answer = second / 3600
             return round(answer)
 
         # This is for the message checks because bots are smart nowadays.
-        async def msg_update(_id, name, link, message, user):
+        async def _msg_update(_id, name, link, message, user):
             with open("msg_list.csv", "a") as file:
                 fieldnames = ["discord_id", "discord_name", "link", "message"]
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writerow({"discord_id": _id, "discord_name": name, "link": link, "message": message.lower()})
 
-            return await msg_counter(_id, user)
+            return await _msg_counter(_id, user)
 
-        async def msg_counter(_id, person):
+        async def _msg_counter(_id, person):
             muted_role_id = 909500197833416744
 
             msgs = msg_check()
@@ -329,7 +332,7 @@ class Functionality:
                         await person.author.send(f'You are now Muted for spamming reasons.')
             return
 
-        def ban_profile_check(_id):
+        def _ban_profile_check(_id):
             ban_list = ban_id_check()
             found = []
 
@@ -339,8 +342,7 @@ class Functionality:
 
             return found
 
-        def ban_profile_check_all():
-
+        def _ban_profile_check_all():
             ban_list = ban_id_check()
             found = []
 
@@ -349,7 +351,7 @@ class Functionality:
 
             return found
 
-        def update_unban(_id):
+        def _update_unban(_id):
             ban_ids = ban_id_check()
             updated_ban_list = list()
             inform_ban_list = list()  # This is to inform players when their ban is over.
@@ -376,7 +378,7 @@ class Functionality:
 
             return updated_ban_list, inform_ban_list
 
-        def update_ban_list():
+        def _update_ban_list():
             ban_ids = ban_id_check()
             updated_ban_list = list()
             inform_ban_list = list()  # This is to inform players when their ban is over.
@@ -411,8 +413,8 @@ class Functionality:
 
             return updated_ban_list, inform_ban_list
 
-        async def inform_update_list():
-            updated_list = update_ban_list()[1]
+        async def _inform_update_list():
+            updated_list = _update_ban_list()[1]
 
             if updated_list:
                 for user in updated_list:
@@ -425,7 +427,7 @@ class Functionality:
 
             return
 
-        def update_rp_list():
+        def _update_rp_list():
             rp_list = rp_id_check()
             updated_rp_list = list()
             update_dict = None
@@ -460,7 +462,7 @@ class Functionality:
 
             return updated_rp_list
 
-        def update_rp_list_choice(_id, val):
+        def _update_rp_list_choice(_id, val):
             change_dict = {
                 0: [0, 0, 0],  # Close Sign Ups
                 1: [1, 0, 0],  # Open Sign Ups
@@ -500,7 +502,7 @@ class Functionality:
 
             return updated_rp_list, inform_update
 
-        def rp_profile_check(_id):
+        def _rp_profile_check(_id):
             rp_list = rp_id_check()
             found = []
 
@@ -510,7 +512,7 @@ class Functionality:
 
             return found
 
-        def rp_profile_check_sign_up(val):
+        def _rp_profile_check_sign_up(val):
             if val != 0:
                 return
 
@@ -523,7 +525,7 @@ class Functionality:
 
             return found
 
-        def rp_profile_check_ongoing(val):
+        def _rp_profile_check_ongoing(val):
             if val != 1:
                 return
 
@@ -536,7 +538,7 @@ class Functionality:
 
             return found
 
-        def rp_profile_check_ended(val):
+        def _rp_profile_check_ended(val):
             if val != 2:
                 return
 
@@ -549,7 +551,7 @@ class Functionality:
 
             return found
 
-        def rp_profile_check_all(val):
+        def _rp_profile_check_all(val):
             if val != 3:
                 return
 
@@ -561,7 +563,7 @@ class Functionality:
 
             return found
 
-        def timezone_time_check(hour_change: int, inc_time: int):
+        def _timezone_time_check(hour_change: int, inc_time: int):
             hour_change = hour_change + inc_time
 
             if hour_change > 23:
@@ -592,7 +594,7 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             ban_ids = ban_id_check()
@@ -612,11 +614,11 @@ class Functionality:
                 writer.writerow({"discord_id": user_id, "discord_name": target.name, "ban_timestamp": round(time.time()), "ban_length": ban_length, "reason": reason, "ended": 0})
 
             if ban_length < 86400:
-                days = second_to_hour(ban_length)
+                days = _second_to_hour(ban_length)
                 word_ = f"{days} hours"
 
             else:
-                days = second_to_day(ban_length)
+                days = _second_to_day(ban_length)
                 word_ = f"{days} days"
 
             await ctx.channel.send(f'**{target.name} ({user_id}) is now banned from using the Server Bot for {word_}.**'
@@ -635,14 +637,14 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            initial_check = ban_profile_check(_id)
+            initial_check = _ban_profile_check(_id)
             if not initial_check:
                 return await ctx.send("`Invalid Discord ID.`")
 
-            updated_list = update_unban(_id)
+            updated_list = _update_unban(_id)
             updated_list = updated_list[1]
 
             for user in updated_list:
@@ -665,10 +667,10 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = ban_profile_check(_id)
+            profile = _ban_profile_check(_id)
             embed = None
 
             if not profile:
@@ -680,7 +682,7 @@ class Functionality:
                                       description=f'**Discord Name**: {user["discord_name"]}\n'
                                                   f'**Discord ID**: {user["discord_id"]}\n'
                                                   f'**Ban Date**: {date_}\n'
-                                                  f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                                                  f'**Ban Length**: {_second_to_day(int(user["ban_length"]))}\n'
                                                   f'**Reason**: {user["reason"]}\n'
                                                   f'**Ban Ended**: {user["ended"]}',
 
@@ -707,10 +709,10 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            profile = ban_profile_check_all()
+            profile = _ban_profile_check_all()
 
             if not profile:
                 return await ctx.send("`There are no bans in the Database.`")
@@ -721,7 +723,7 @@ class Functionality:
                                       description=f'**Discord Name**: {user["discord_name"]}\n'
                                                   f'**Discord ID**: {user["discord_id"]}\n'
                                                   f'**Ban Date**: {date_}\n'
-                                                  f'**Ban Length**: {second_to_day(int(user["ban_length"]))}\n'
+                                                  f'**Ban Length**: {_second_to_day(int(user["ban_length"]))}\n'
                                                   f'**Reason**: {user["reason"]}\n'
                                                   f'**Ban Ended**: {user["ended"]}',
 
@@ -744,10 +746,10 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            updated_list = update_ban_list()[1]
+            updated_list = _update_ban_list()[1]
 
             if updated_list:
                 for user in updated_list:
@@ -782,7 +784,7 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
             rp_list = rp_id_check()
@@ -854,7 +856,7 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            profile = rp_profile_check(_id)
+            profile = _rp_profile_check(_id)
 
             embed = None
             bool_string = {"0": False, "1": True}
@@ -906,10 +908,10 @@ class Functionality:
                 return await ctx.send("`Input a valid value from 0-3 only.`")
 
             rp_dict = {
-                0: rp_profile_check_sign_up(value),
-                1: rp_profile_check_ongoing(value),
-                2: rp_profile_check_ended(value),
-                3: rp_profile_check_all(value)
+                0: _rp_profile_check_sign_up(value),
+                1: _rp_profile_check_ongoing(value),
+                2: _rp_profile_check_ended(value),
+                3: _rp_profile_check_all(value)
             }
 
             bool_string = {"0": False, "1": True}
@@ -977,16 +979,16 @@ class Functionality:
 
             string_inform = None
 
-            if not admin_check(ctx):
+            if not _admin_check(ctx):
                 return await ctx.send("`Insufficient Privileges.`")
 
-            initial_check = rp_profile_check(_id)
+            initial_check = _rp_profile_check(_id)
 
             if not initial_check:
                 return await ctx.send('`Invalid RP Serial Code, cannot update.`')
 
             try:
-                update = update_rp_list_choice(_id, value)
+                update = _update_rp_list_choice(_id, value)
             except KeyError:
                 return await ctx.send("`Input a valid value from 0-3 only.`")
 
@@ -1158,21 +1160,21 @@ class Functionality:
             hour_change = int(hour_split[0])
             text_ = [
                 f"**-- Standard Time --**",
-                f"**EST**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
-                f"**CST**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
-                f"**MST**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
-                f"**PST**: {timezone_time_check(hour_change, -8)}:{hour_split[1]}:{hour_split[2]}",
+                f"**EST**: {_timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
+                f"**CST**: {_timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
+                f"**MST**: {_timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
+                f"**PST**: {_timezone_time_check(hour_change, -8)}:{hour_split[1]}:{hour_split[2]}",
                 f"**-- Daylight Time --**",
-                f"**EDT**: {timezone_time_check(hour_change, -4)}:{hour_split[1]}:{hour_split[2]}",
-                f"**CDT**: {timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
-                f"**MDT**: {timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
-                f"**PDT**: {timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
+                f"**EDT**: {_timezone_time_check(hour_change, -4)}:{hour_split[1]}:{hour_split[2]}",
+                f"**CDT**: {_timezone_time_check(hour_change, -5)}:{hour_split[1]}:{hour_split[2]}",
+                f"**MDT**: {_timezone_time_check(hour_change, -6)}:{hour_split[1]}:{hour_split[2]}",
+                f"**PDT**: {_timezone_time_check(hour_change, -7)}:{hour_split[1]}:{hour_split[2]}",
                 f"**-- Europe Time --**",
-                f"**UTC-1**: {timezone_time_check(hour_change, -1)}:{hour_split[1]}:{hour_split[2]}",
-                f"**UTC**: {timezone_time_check(hour_change, 0)}:{hour_split[1]}:{hour_split[2]}",
-                f"**UTC+1**: {timezone_time_check(hour_change, 1)}:{hour_split[1]}:{hour_split[2]}",
-                f"**UTC+2**: {timezone_time_check(hour_change, 2)}:{hour_split[1]}:{hour_split[2]}",
-                f"**UTC+3**: {timezone_time_check(hour_change, 3)}:{hour_split[1]}:{hour_split[2]}",
+                f"**UTC-1**: {_timezone_time_check(hour_change, -1)}:{hour_split[1]}:{hour_split[2]}",
+                f"**UTC**: {_timezone_time_check(hour_change, 0)}:{hour_split[1]}:{hour_split[2]}",
+                f"**UTC+1**: {_timezone_time_check(hour_change, 1)}:{hour_split[1]}:{hour_split[2]}",
+                f"**UTC+2**: {_timezone_time_check(hour_change, 2)}:{hour_split[1]}:{hour_split[2]}",
+                f"**UTC+3**: {_timezone_time_check(hour_change, 3)}:{hour_split[1]}:{hour_split[2]}",
             ]
 
             text_ = "\n".join(text_)

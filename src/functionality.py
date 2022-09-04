@@ -8,6 +8,8 @@ import string
 import random
 import asyncio
 import re
+import requests
+
 from collections import Counter
 from discord.ext import commands, tasks
 
@@ -1283,20 +1285,24 @@ class Functionality:
             if not _validate_command(ctx):
                 return
 
-            results1 = await _upload_check_pre_download_upload(ctx, server, file_type)
-            pre_download_valid, server, file_type, attachment = results1
+            pre_download_valid, server, file_type, attachment = (
+                await _upload_check_pre_download(ctx, server, file_type))
             if not pre_download_valid:
+                return
+
+            download_valid, content = await _upload_check_download(ctx, attachment.url)
+            if not download_valid:
                 return
 
             filename = f'{ctx.author.id % 10000}_{attachment.filename}'
 
             await ctx.channel.send(
                 f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
+            await ctx.channel.send(content)
 
-        async def _upload_check_pre_download_upload(
+        async def _upload_check_pre_download(
             ctx: commands.Context, server: str,
-            file_type: str) -> Union[Tuple[bool, None, None, None],
-                                     Tuple[bool, str, str, discord.Attachment]]:
+            file_type: str) -> Tuple[bool, str, str, Union[discord.Attachment, None]]:
 
             VALID_SERVERS = {
                 'main',
@@ -1305,7 +1311,7 @@ class Functionality:
             if server.lower().strip() not in VALID_SERVERS:
                 await ctx.channel.send(
                     f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
-                return (False, None, None, None)
+                return (False, '', '', None)
 
             server = server.lower().strip()
 
@@ -1316,13 +1322,13 @@ class Functionality:
             if file_type.lower().strip() not in VALID_FILE_TYPES:
                 await ctx.channel.send(
                     f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
-                return (False, None, None, None)
+                return (False, '', '', None)
             file_type = file_type.lower().strip()
 
             attachments = ctx.message.attachments
             if not attachments:
                 await ctx.channel.send('Expected attachment.')
-                return (False, None, None, None)
+                return (False, '', '', None)
 
             attachment = attachments[0]
             if not attachment.filename.endswith('.yaml'):
@@ -1342,3 +1348,28 @@ class Functionality:
                 return (False, None, None, None)
 
             return (True, server, file_type, attachment)
+
+        async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str]:
+            if not url.startswith('http') and not url.endswith('.yaml'):
+                await ctx.channel.send(
+                    f'Invalid download link generated for `{url}`.'
+                )
+                return (False, '')
+
+            response = requests.get(url)
+            if not response:
+                await ctx.channel.send(
+                    f'Invalid response read for download link generated for `{url}`: `{response}`.'
+                )
+                return (False, '')
+
+            raw_content = response.content
+            try:
+                content = raw_content.decode('utf-8')
+            except UnicodeDecodeError as exc:
+                await ctx.channel.send(
+                    f'Invalid UTF-8 file read for download link generated for `{url}`: `{exc}`.'
+                )
+                return (False, '')
+
+            return (True, content)

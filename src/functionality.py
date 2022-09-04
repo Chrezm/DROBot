@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from discord.ext import commands, tasks
 
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Tuple
 from src.timezone_list import timezone_list
 
 ban_ids_type = List[Dict[Union[str, Any], Union[str, Any]]]
@@ -1014,41 +1014,6 @@ class Functionality:
             await ctx.channel.send('Pong.')
 
         @bot.command(
-            name='upload',
-        )
-        async def upload(ctx: commands.Context, server: str, file_type: str):
-            if not _validate_command(ctx):
-                return
-
-            valid_servers = {
-                'main',
-                'test',
-            }
-            if server.lower().strip() not in valid_servers:
-                return await ctx.channel.send(
-                    f'Expected server be one of `{valid_servers}`, found `{server}`.')
-            server = server.lower().strip()
-
-            valid_file_types = {
-                'areas',
-                'music',
-            }
-            if file_type.lower().strip() not in valid_file_types:
-                return await ctx.channel.send(
-                    f'Expected file type be one of `{valid_file_types}`, found `{file_type}`.')
-            file_type = file_type.lower().strip()
-
-            attachments = ctx.message.attachments
-            if not attachments:
-                return await ctx.channel.send('Expected attachment.')
-            attachment = attachments[0]
-
-            filename = f'{ctx.author.id % 10000}_{attachment.filename}'
-
-            await ctx.channel.send(
-                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
-
-        @bot.command(
             name='hammertime',
             brief='Returns Hammertime Code. Can return remainder, as well.',
             help=('Returns Hammertime Code. Can return remainder, as well. For remainder, simply add a "1" at the end of the command and is an optional argument.\n'
@@ -1310,3 +1275,70 @@ class Functionality:
         async def unban_error(ctx: commands.Context, error):
             if isinstance(error, commands.BadArgument):
                 return await ctx.send("`Please input <user_id> as integers.`")
+
+        @bot.command(
+            name='upload',
+        )
+        async def upload(ctx: commands.Context, server: str, file_type: str):
+            if not _validate_command(ctx):
+                return
+
+            results1 = await _upload_check_pre_download_upload(ctx, server, file_type)
+            pre_download_valid, server, file_type, attachment = results1
+            if not pre_download_valid:
+                return
+
+            filename = f'{ctx.author.id % 10000}_{attachment.filename}'
+
+            await ctx.channel.send(
+                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
+
+        async def _upload_check_pre_download_upload(
+            ctx: commands.Context, server: str,
+            file_type: str) -> Union[Tuple[bool, None, None, None],
+                                     Tuple[bool, str, str, discord.Attachment]]:
+
+            VALID_SERVERS = {
+                'main',
+                'test',
+            }
+            if server.lower().strip() not in VALID_SERVERS:
+                await ctx.channel.send(
+                    f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
+                return (False, None, None, None)
+
+            server = server.lower().strip()
+
+            VALID_FILE_TYPES = {
+                'areas',
+                'music',
+            }
+            if file_type.lower().strip() not in VALID_FILE_TYPES:
+                await ctx.channel.send(
+                    f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
+                return (False, None, None, None)
+            file_type = file_type.lower().strip()
+
+            attachments = ctx.message.attachments
+            if not attachments:
+                await ctx.channel.send('Expected attachment.')
+                return (False, None, None, None)
+
+            attachment = attachments[0]
+            if not attachment.filename.endswith('.yaml'):
+                await ctx.channel.send(
+                    f'Expected file extension to be `.yaml`, '
+                    f'found `{attachment.filename}`.'
+                )
+                return (False, None, None, None)
+
+            MAX_FILE_SIZE = 204800  # 200 Kibibytes
+
+            if attachment.size > MAX_FILE_SIZE:
+                await ctx.channel.send(
+                    f'Expected file size to not exceed `{MAX_FILE_SIZE/1024} KB`, '
+                    f'found the file was `{attachment.size/2048} KB`.'
+                )
+                return (False, None, None, None)
+
+            return (True, server, file_type, attachment)

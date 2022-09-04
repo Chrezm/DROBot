@@ -8,3 +8,4 @@ src/guild_specific/test.py
 *__pycache__
 ban_ids.csv
 rp_collection.csv
+msg_list.csv

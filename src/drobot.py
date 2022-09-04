@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from src import functionality
 
+import discord
 from discord.ext import commands
 
 from typing import Tuple, Dict
@@ -9,7 +10,11 @@ from typing import Tuple, Dict
 class DROBot():
     def __init__(self, production: bool = True):
         guild_details, token = self._setup(production)
-        bot = commands.Bot(command_prefix="$")
+        intents = discord.Intents.default()
+        intents.messages = True
+        intents.message_content = True
+
+        bot = commands.Bot(command_prefix="$", intents=intents)
         functionality.Functionality(bot=bot, guild_details=guild_details)
         bot.run(token)
 

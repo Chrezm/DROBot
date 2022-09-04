@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from discord.ext import commands, tasks
 
-from typing import Dict
+from typing import Dict, Any, List
 from src.timezone_list import timezone_list
 
 # This is a string generator for RP Serial Codes. But it can be used for something more in the future.
@@ -41,7 +41,7 @@ def check_value(list_):
 
 
 # This is the initial check for ban_ids.csv and obtaining its data.
-def ban_id_check():
+def ban_id_check() -> List[Dict[str | Any, str | Any]]:
     ban_list = None
     try:
         with open("ban_ids.csv", "r+", newline="") as file:
@@ -146,56 +146,79 @@ class Functionality:
             raise error
 
         @bot.event
-        async def on_message(message):
-            # Looks through the ban_id.csv
-            ban_id_ = ban_id_check()
-            channel_id = 899708230069006407
-            muted_role_id = 909500197833416744
-            regex_url = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-            urls = re.findall(regex_url, message.content.lower())
-
+        async def on_message(message: discord.Message):
             if message.author == bot.user:
                 return
-            
-            if urls:
-                await msg_update(message.author.id, message.author.name, urls, message.content, message)
-            
-            if message.channel.id == channel_id:
-                muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
 
-                user = message.author
-                has_muted_role = False
+            await _check_url(message)
 
-                for role in user.roles:
-                    if role.id == muted_role_id:
-                        has_muted_role = True
+            if await _check_sent_in_honeypot_channel(message):
+                return
 
-                if has_muted_role:
-                    await message.author.send(f'You are Muted from this server. You cannot send any messages.')
-                else:
-                    await user.add_roles(muted_role)
-                    await message.author.send(f'You are now Muted for spamming reasons.')
+            # Looks through the ban_id.csv
+            ban_id_ = ban_id_check()
 
-                await _relay_message(
-                    message,
-                    prefix=guild_details.relaying_prefix,
-                    suffix=guild_details.relaying_suffix)
-                
-                await message.delete()
-
-            if message.channel.name in guild_details.relaying_channels:
-                # Right here, it will delete the message and notify the user who tried using the bot that they are banned.
-                for user in ban_id_:
-                    if message.author.id == user["discord_id"] and not int(user["ended"]):
-                        await message.delete(message)
-                        return await message.author.send("**You cannot use the bot due to your ban.**")
-
-                await _relay_message(
-                    message,
-                    prefix=guild_details.relaying_prefix,
-                    suffix=guild_details.relaying_suffix)
+            if await _check_sent_in_relaying_channel(message, ban_id_):
+                return
 
             await bot.process_commands(message)
+
+        async def _check_url(message: discord.Message):
+            regex_url = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+            urls = re.findall(regex_url, message.content.lower())
+            if urls:
+                await msg_update(message.author.id, message.author.name, urls, message.content, message)
+
+        async def _check_sent_in_honeypot_channel(message: discord.Message) -> bool:
+            channel_id = 899708230069006407
+            if message.channel.id != channel_id:
+                return False
+
+            muted_role_id = 909500197833416744
+            muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
+            user = message.author
+            has_muted_role = False
+
+            for role in user.roles:
+                if role.id == muted_role_id:
+                    has_muted_role = True
+
+            if has_muted_role:
+                await message.author.send(f'You are Muted from this server. You cannot send any messages.')
+            else:
+                await user.add_roles(muted_role)
+                await message.author.send(f'You are now Muted for spamming reasons.')
+
+            await _relay_message(
+                message,
+                prefix=guild_details.relaying_prefix,
+                suffix=guild_details.relaying_suffix)
+
+            await message.delete()
+            return True
+
+        async def _check_if_banned(message: discord.Message, ban_id_) -> bool:
+            # Right here, it will delete the message and notify the user who tried using the bot that they are banned.
+            for user in ban_id_:
+                if message.author.id == user["discord_id"] and not int(user["ended"]):
+                    await message.delete(message)
+                    await message.author.send("**You cannot use the bot due to your ban.**")
+                    return True
+
+            return False
+
+        async def _check_sent_in_relaying_channel(message: discord.Message, ban_id_) -> bool:
+            if message.channel.name not in guild_details.relaying_channels:
+                return False
+
+            if await _check_if_banned(message, ban_id_):
+                return True
+
+            await _relay_message(
+                message,
+                prefix=guild_details.relaying_prefix,
+                suffix=guild_details.relaying_suffix)
+            return True
 
         # -- Functions Area -- #
 
@@ -268,7 +291,7 @@ class Functionality:
         def second_to_hour(second: int):
             answer = second / 3600
             return round(answer)
-        
+
         # This is for the message checks because bots are smart nowadays.
         async def msg_update(_id, name, link, message, user):
             with open("msg_list.csv", "a") as file:
@@ -662,7 +685,7 @@ class Functionality:
                                                   f'**Ban Ended**: {user["ended"]}',
 
                                       colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
+                embed.set_thumbnail(url=ctx.author.avatar.url)
                 embed.set_footer(text=ctx.author)
 
                 if _all:
@@ -703,7 +726,7 @@ class Functionality:
                                                   f'**Ban Ended**: {user["ended"]}',
 
                                       colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
+                embed.set_thumbnail(url=ctx.author.avatar.url)
                 embed.set_footer(text=ctx.author)
 
                 await ctx.send(embed=embed)
@@ -856,7 +879,7 @@ class Functionality:
                                                   f'**Document**: {rp["doc"]}',
 
                                       colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
+                embed.set_thumbnail(url=ctx.author.avatar.url)
                 embed.set_footer(text=ctx.author)
 
             return await ctx.send(embed=embed)
@@ -916,7 +939,7 @@ class Functionality:
                                                   f'**Document**: {rp["doc"]}',
 
                                       colour=discord.Color.dark_blue())
-                embed.set_thumbnail(url=ctx.author.avatar_url)
+                embed.set_thumbnail(url=ctx.author.avatar.url)
                 embed.set_footer(text=ctx.author)
 
                 await ctx.send(embed=embed)
@@ -987,7 +1010,7 @@ class Functionality:
                 return
 
             await ctx.channel.send('Pong.')
-            
+
         @bot.command(
             name='hammertime',
             brief='Returns Hammertime Code. Can return remainder, as well.',
@@ -1002,7 +1025,7 @@ class Functionality:
         async def hammertime(ctx: commands.Context, timezone_: str, date_, time_, _remain=0):
             if not _validate_command(ctx):
                 return
-            
+
             try:
                 _remain = int(_remain)
                 if _remain not in (0, 1):
@@ -1157,7 +1180,7 @@ class Functionality:
             embed = discord.Embed(title=title_embed,
                                   description=f'{text_}',
                                   colour=discord.Color.dark_gold())
-            embed.set_thumbnail(url=ctx.author.avatar_url)
+            embed.set_thumbnail(url=ctx.author.avatar.url)
             embed.set_footer(text=ctx.author)
 
             await ctx.send(embed=embed)
@@ -1220,7 +1243,7 @@ class Functionality:
             embed = discord.Embed(title=f'It is {irl_time} UTC',
                                   description=f'{text_}',
                                   colour=discord.Color.dark_blue())
-            embed.set_thumbnail(url=ctx.author.avatar_url)
+            embed.set_thumbnail(url=ctx.author.avatar.url)
             embed.set_footer(text=ctx.author)
 
             await ctx.send(embed=embed)

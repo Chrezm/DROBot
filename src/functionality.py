@@ -1014,6 +1014,41 @@ class Functionality:
             await ctx.channel.send('Pong.')
 
         @bot.command(
+            name='upload',
+        )
+        async def upload(ctx: commands.Context, server: str, file_type: str):
+            if not _validate_command(ctx):
+                return
+
+            valid_servers = {
+                'main',
+                'test',
+            }
+            if server.lower().strip() not in valid_servers:
+                return await ctx.channel.send(
+                    f'Expected server be one of `{valid_servers}`, found `{server}`.')
+            server = server.lower().strip()
+
+            valid_file_types = {
+                'areas',
+                'music',
+            }
+            if file_type.lower().strip() not in valid_file_types:
+                return await ctx.channel.send(
+                    f'Expected file type be one of `{valid_file_types}`, found `{file_type}`.')
+            file_type = file_type.lower().strip()
+
+            attachments = ctx.message.attachments
+            if not attachments:
+                return await ctx.channel.send('Expected attachment.')
+            attachment = attachments[0]
+
+            filename = f'{ctx.author.id % 10000}_{attachment.filename}'
+
+            await ctx.channel.send(
+                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
+
+        @bot.command(
             name='hammertime',
             brief='Returns Hammertime Code. Can return remainder, as well.',
             help=('Returns Hammertime Code. Can return remainder, as well. For remainder, simply add a "1" at the end of the command and is an optional argument.\n'

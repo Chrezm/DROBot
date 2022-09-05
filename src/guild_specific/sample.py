@@ -35,6 +35,21 @@ class SampleGuild(Guild):
         }
 
 
+    # Honeypot
+    def honeypot_channels(self) -> Set[str]:
+        return {
+            'bots-only',
+        }
+
+
+    # Role: Bot Muted
+    def bot_muted_role_name(self) -> str:
+        return 'Muted'
+
+    def bot_muted_role_id(self) -> int:
+        return 909500197833416744
+
+
     # Role: RP Active
     def rp_active_role_name(self) -> str:
         return 'epic role'

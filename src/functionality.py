@@ -179,17 +179,16 @@ class Functionality:
                 await _msg_update(message.author.id, message.author.name, urls, message.content, message)
 
         async def _check_sent_in_honeypot_channel(message: discord.Message) -> bool:
-            channel_id = 899708230069006407
-            if message.channel.id != channel_id:
+            if message.channel.name in guild_details.honeypot_channels():
                 return False
 
-            muted_role_id = 909500197833416744
-            muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
+            muted_role = discord.utils.get(message.author.guild.roles,
+                                           name=guild_details.bot_muted_role_name())
             user = message.author
             has_muted_role = False
 
             for role in user.roles:
-                if role.id == muted_role_id:
+                if role.id == guild_details.bot_muted_role_id():
                     has_muted_role = True
 
             if has_muted_role:
@@ -251,7 +250,7 @@ class Functionality:
 
             return False
 
-        async def _relay_message(message, prefix='', suffix=''):
+        async def _relay_message(message: discord.Message, prefix: str = '', suffix: str = ''):
             for role in message.author.roles:
                 if role.id in guild_details.relaying_ignore_roles():
                     return
@@ -312,8 +311,6 @@ class Functionality:
             return await _msg_counter(_id, user)
 
         async def _msg_counter(_id, person):
-            muted_role_id = 909500197833416744
-
             msgs = msg_check()
             msg_list = list()
 
@@ -325,13 +322,13 @@ class Functionality:
             for k, v in counter.items():
                 if v >= 3:
                     muted_role = discord.utils.get(person.author.guild.roles,
-                                                   name="Muted")
+                                                   name=guild_details.bot_maintainer_role_name())
 
                     user = person.author
                     has_muted_role = False
 
                     for role in user.roles:
-                        if role.id == muted_role_id:
+                        if role.id == guild_details.bot_muted_role_id():
                             has_muted_role = True
 
                     if not has_muted_role:
@@ -703,8 +700,6 @@ class Functionality:
             if not _all:
                 await ctx.send(embed=embed)
 
-            return
-
         @bot.command(
             name='ban_profile_all',
             brief='Returns all ban profiles from all banned or previously banned users.',
@@ -739,8 +734,6 @@ class Functionality:
                 embed.set_footer(text=ctx.author)
 
                 await ctx.send(embed=embed)
-
-            return
 
         @bot.command(
             name='ban_list_update',
@@ -952,8 +945,6 @@ class Functionality:
                 embed.set_footer(text=ctx.author)
 
                 await ctx.send(embed=embed)
-
-            return
 
         @bot.command(
             name='rp_change_status',

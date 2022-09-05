@@ -25,6 +25,19 @@ class Guild():
         raise NotImplementedError
 
 
+    # Honeypot
+    def honeypot_channels(self) -> Set[str]:
+        raise NotImplementedError
+
+
+    # Role: Bot Muted
+    def bot_muted_role_name(self) -> str:
+        raise NotImplementedError
+
+    def bot_muted_role_id(self) -> int:
+        raise NotImplementedError
+
+
     # Role: RP Active
     def rp_active_role_name(self) -> str:
         raise NotImplementedError

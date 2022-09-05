@@ -1275,6 +1275,10 @@ class Functionality:
             name='upload',
         )
         async def upload(ctx: commands.Context, server: str, file_type: str):
+            await _upload(ctx, server, file_type)
+            await ctx.message.delete()
+
+        async def _upload(ctx: commands.Context, server: str, file_type: str):
             if not _validate_command(ctx):
                 return
 
@@ -1298,7 +1302,7 @@ class Functionality:
             if not upload_valid:
                 return
 
-            await ctx.channel.send(
+            await ctx.message.author.send(
                 f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
 
         async def _upload_check_pre_download(
@@ -1307,35 +1311,35 @@ class Functionality:
 
             VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
                 return (False, '', '', None)
             server = server.lower().strip()
 
             VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
             if file_type.lower().strip() not in VALID_FILE_TYPES:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
                 return (False, '', '', None)
             file_type = file_type.lower().strip()
 
             attachments = ctx.message.attachments
             if not attachments:
-                await ctx.channel.send('Expected attachment.')
+                await ctx.message.author.send('Expected attachment.')
                 return (False, '', '', None)
 
             attachment = attachments[0]
             if not attachment.filename.endswith('.yaml'):
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected file extension to be `.yaml`, '
                     f'found `{attachment.filename}`.'
                 )
                 return (False, None, None, None)
 
-            MAX_FILE_SIZE = 204800  # 200 Kibibytes
+            MAX_FILE_SIZE = guild_details.upload_max_size_bytes()
 
             if attachment.size > MAX_FILE_SIZE:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected file size to not exceed `{MAX_FILE_SIZE/1024} KB`, '
                     f'found the file was `{attachment.size/2048} KB`.'
                 )
@@ -1345,14 +1349,14 @@ class Functionality:
 
         async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str]:
             if not url.startswith('http') and not url.endswith('.yaml'):
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'SYSTEM: Invalid download link generated for `{url}`.'
                 )
                 return (False, '')
 
             response = requests.get(url)
             if not response:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'SYSTEM: Invalid response read for download link generated for `{url}`: '
                     f'`{response}`.'
                 )
@@ -1362,7 +1366,7 @@ class Functionality:
             try:
                 content = raw_content.decode('utf-8')
             except UnicodeDecodeError as exc:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Invalid UTF-8 file read for download link generated for `{url}`: `{exc}`.'
                 )
                 return (False, '')
@@ -1411,11 +1415,12 @@ class Functionality:
 
                 valid = lines[2].endswith('is VALID.')
                 if not valid:
-                    raise ValueError(f'YAML file is not syntactically valid.\r\n{lines[3]}')
+                    raise ValueError(
+                        f'`{file_type}` YAML file is not syntactically valid.\r\n{lines[3]}')
 
                 return True, output
             except Exception as e:
-                await ctx.channel.send(e)
+                await ctx.message.author.send(e)
                 return False, output
             finally:
                 if temp_path:
@@ -1428,17 +1433,14 @@ class Functionality:
 
             VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
                 return False, ''
             server = server.lower().strip()
 
-            VALID_FILE_TYPES = {
-                'areas',
-                'music',
-            }
+            VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
             if file_type.lower().strip() not in VALID_FILE_TYPES:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
                 return False, ''
             file_type = file_type.lower().strip()
@@ -1452,7 +1454,7 @@ class Functionality:
                 with open(f'{directory}\\{stem_path}', mode='w', encoding='utf-8') as f:
                     f.write(content)
             except Exception as e:
-                await ctx.channel.send(
+                await ctx.message.author.send(
                     f'SYSTEM: Error while saving to path {stem_path}: {e}'
                 )
                 return False, ''

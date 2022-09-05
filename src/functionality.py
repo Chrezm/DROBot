@@ -1298,12 +1298,15 @@ class Functionality:
             if not download_valid:
                 return
 
-            post_download_valid, output = (
-                await _upload_check_post_download(ctx, file_type, content))
-            if not post_download_valid:
+            yaml_valid, output = (
+                await _upload_check_yaml(ctx, file_type, content))
+            if not yaml_valid:
                 return
 
-            filename = f'{ctx.author.id % 10000}_{attachment.filename}'
+            upload_valid, filename = (
+                await _upload_check_upload(ctx, server, file_type, content, attachment.filename))
+            if not upload_valid:
+                return
 
             await ctx.channel.send(
                 f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
@@ -1386,8 +1389,11 @@ class Functionality:
 
             return (True, content)
 
-        async def _upload_check_post_download(ctx: commands.Context, file_type: str,
-                                              content: str) -> Tuple[bool, str]:
+        async def _upload_check_yaml(ctx: commands.Context, file_type: str,
+                                     content: str) -> Tuple[bool, str]:
+            if not content.strip():
+                return False, ''
+
             temp_path = ''
             output = ''
 
@@ -1432,3 +1438,50 @@ class Functionality:
             finally:
                 if temp_path:
                     os.remove(temp_path)
+
+        async def _upload_check_upload(ctx: commands.Context, server: str, file_type: str,
+                                       content: str, original_filename: str) -> Tuple[bool, str]:
+            if not content.strip():
+                return False, ''
+
+            VALID_SERVERS = {
+                'main',
+                'test',
+            }
+            if server.lower().strip() not in VALID_SERVERS:
+                await ctx.channel.send(
+                    f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
+                return False, ''
+            server = server.lower().strip()
+
+            VALID_FILE_TYPES = {
+                'areas',
+                'music',
+            }
+            if file_type.lower().strip() not in VALID_FILE_TYPES:
+                await ctx.channel.send(
+                    f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
+                return False, ''
+            file_type = file_type.lower().strip()
+
+            filename = f'{ctx.author.id % 10000}_{original_filename}'
+            DIRECTORY = 'D:\\AO\\TsuserverDR'
+
+            VALID_FILE_TYPES_FOLDERS = {
+                'areas': 'config\\area_lists',
+                'music': 'config\\music_lists'
+            }
+
+            stem_path = f'{VALID_FILE_TYPES_FOLDERS[file_type]}\\{filename}'
+            full_path = f'{DIRECTORY}\\{stem_path}'
+
+            try:
+                with open(full_path, mode='w', encoding='utf-8') as f:
+                    f.write(content)
+            except Exception as e:
+                await ctx.channel.send(
+                    f'SYSTEM: Error while saving to path {stem_path}: {e}'
+                )
+                return False, ''
+
+            return True, filename

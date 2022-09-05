@@ -17,6 +17,8 @@ from collections import Counter
 from discord.ext import commands, tasks
 
 from typing import Dict, Any, List, Union, Tuple
+
+from src.guild import Guild
 from src.timezone_list import timezone_list
 
 ban_ids_type = List[Dict[Union[str, Any], Union[str, Any]]]
@@ -113,7 +115,7 @@ def rp_id_check():
 
 
 class Functionality:
-    def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
+    def __init__(self, bot: commands.Bot = None, guild_details: Guild = None):
         @bot.event
         async def on_ready():
             # This is to start the checks and if said file does not exist, will create one.
@@ -198,8 +200,8 @@ class Functionality:
 
             await _relay_message(
                 message,
-                prefix=guild_details.relaying_prefix,
-                suffix=guild_details.relaying_suffix)
+                prefix=guild_details.relaying_prefix(),
+                suffix=guild_details.relaying_suffix())
 
             await message.delete()
             return True
@@ -216,7 +218,7 @@ class Functionality:
 
         async def _check_sent_in_relaying_channel(message: discord.Message,
                                                   ban_id_: ban_ids_type) -> bool:
-            if message.channel.name not in guild_details.relaying_channels:
+            if message.channel.name not in guild_details.relaying_channels():
                 return False
 
             if await _check_if_banned(message, ban_id_):
@@ -224,8 +226,8 @@ class Functionality:
 
             await _relay_message(
                 message,
-                prefix=guild_details.relaying_prefix,
-                suffix=guild_details.relaying_suffix)
+                prefix=guild_details.relaying_prefix(),
+                suffix=guild_details.relaying_suffix())
             return True
 
         # -- Functions Area -- #
@@ -240,21 +242,21 @@ class Functionality:
             if ctx.author == bot.user:
                 return False
 
-            if ctx.channel.name in guild_details.command_channels:
+            if ctx.channel.name in guild_details.command_channels():
                 return True
 
             for role in ctx.author.roles:
-                if role.id in guild_details.command_always_accept_from_roles:
+                if role.id in guild_details.command_always_accept_from_roles():
                     return True
 
             return False
 
         async def _relay_message(message, prefix='', suffix=''):
             for role in message.author.roles:
-                if role.id in guild_details.relaying_ignore_roles:
+                if role.id in guild_details.relaying_ignore_roles():
                     return
 
-            to_channel_name = guild_details.relaying_channels[message.channel.name]
+            to_channel_name = guild_details.relaying_channels()[message.channel.name]
             to_channel = _get_channel(to_channel_name)
 
             user = f'{message.author.name}#{message.author.discriminator} (<@{message.author.id}>)'
@@ -1105,8 +1107,8 @@ class Functionality:
         )
         async def rpactive(ctx: commands.Context):
             await _optin_role(ctx,
-                              guild_details.rp_active_role_name,
-                              guild_details.rp_active_role_id)
+                              guild_details.rp_active_role_name(),
+                              guild_details.rp_active_role_id())
 
         @bot.command(
             name='devtester',
@@ -1118,8 +1120,8 @@ class Functionality:
         )
         async def devtester(ctx: commands.Context):
             await _optin_role(ctx,
-                              guild_details.dev_tester_role_name,
-                              guild_details.dev_tester_role_id)
+                              guild_details.dev_tester_role_name(),
+                              guild_details.dev_tester_role_id())
 
         @bot.command(
             name='timezone',

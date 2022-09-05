@@ -4,12 +4,24 @@ from src.guild import Guild
 from typing import Dict, Set
 
 
-class Sample(Guild):
+class SampleGuild(Guild):
+    # General commands
+    def command_channels(self) -> Set[str]:
+        return {
+            'bot-commands',
+        }
+
+    def command_always_accept_from_roles(self) -> Set[int]:
+        return {
+            816054356091994164,
+        }
+
+
+    # Relaying messages
     def relaying_channels(self) -> Dict[str, str]:
         return {
             'test-1': 'test-2',
         }
-
 
     def relaying_prefix(self) -> str:
         return ''
@@ -23,17 +35,7 @@ class Sample(Guild):
         }
 
 
-    def command_channels(self) -> Set[str]:
-        return {
-            'bot-commands',
-        }
-
-    def command_always_accept_from_roles(self) -> Set[int]:
-        return {
-            816054356091994164,
-        }
-
-
+    # Role: RP Active
     def rp_active_role_name(self) -> str:
         return 'epic role'
 
@@ -41,6 +43,7 @@ class Sample(Guild):
         return 816054356091994164
 
 
+    # Role: Dev Tester
     def dev_tester_role_name(self) -> str:
         return 'dev tester'
 
@@ -48,6 +51,7 @@ class Sample(Guild):
         return 892586465907855400
 
 
+    # Role: Bot Maintainer
     def bot_maintainer_role_name(self) -> str:
         return 'bot maintainer'
 

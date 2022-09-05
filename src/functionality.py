@@ -179,7 +179,7 @@ class Functionality:
                 await _msg_update(message.author.id, message.author.name, urls, message.content, message)
 
         async def _check_sent_in_honeypot_channel(message: discord.Message) -> bool:
-            if message.channel.name in guild_details.honeypot_channels():
+            if message.channel.name not in guild_details.honeypot_channels():
                 return False
 
             muted_role = discord.utils.get(message.author.guild.roles,
@@ -334,7 +334,6 @@ class Functionality:
                     if not has_muted_role:
                         await user.add_roles(muted_role)
                         await person.author.send(f'You are now Muted for spamming reasons.')
-            return
 
         def _ban_profile_check(_id):
             ban_list = ban_id_check()
@@ -428,8 +427,6 @@ class Functionality:
                     if answer >= 0:
                         target = await bot.fetch_user(int(user['discord_id']))
                         await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
-
-            return
 
         def _update_rp_list():
             rp_list = rp_id_check()
@@ -1292,7 +1289,7 @@ class Functionality:
                 return
 
             yaml_valid, output = (
-                await _upload_check_yaml(ctx, file_type, content))
+                await _upload_check_yaml(ctx, server, file_type, content))
             if not yaml_valid:
                 return
 
@@ -1308,21 +1305,14 @@ class Functionality:
             ctx: commands.Context, server: str,
             file_type: str) -> Tuple[bool, str, str, Union[discord.Attachment, None]]:
 
-            VALID_SERVERS = {
-                'main',
-                'test',
-            }
+            VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
                 await ctx.channel.send(
                     f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
                 return (False, '', '', None)
-
             server = server.lower().strip()
 
-            VALID_FILE_TYPES = {
-                'areas',
-                'music',
-            }
+            VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
             if file_type.lower().strip() not in VALID_FILE_TYPES:
                 await ctx.channel.send(
                     f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
@@ -1382,7 +1372,7 @@ class Functionality:
 
             return (True, content)
 
-        async def _upload_check_yaml(ctx: commands.Context, file_type: str,
+        async def _upload_check_yaml(ctx: commands.Context, server: str, file_type: str,
                                      content: str) -> Tuple[bool, str]:
             if not content.strip():
                 return False, ''
@@ -1395,10 +1385,9 @@ class Functionality:
                 with os.fdopen(fd, 'w') as f:
                     f.write(content)
 
-                DIRECTORY = 'D:\\AO\\TsuserverDR\\server\\validate'
                 command = [
                     'cd',
-                    DIRECTORY,
+                    f'{guild_details.upload_server_paths()[server]}\\server\\validate',
                     '&&',
                     'python',
                     f'{file_type}.py',
@@ -1437,10 +1426,7 @@ class Functionality:
             if not content.strip():
                 return False, ''
 
-            VALID_SERVERS = {
-                'main',
-                'test',
-            }
+            VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
                 await ctx.channel.send(
                     f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
@@ -1457,19 +1443,13 @@ class Functionality:
                 return False, ''
             file_type = file_type.lower().strip()
 
+            directory = guild_details.upload_server_paths()[server]
+
             filename = f'{ctx.author.id % 10000}_{original_filename}'
-            DIRECTORY = 'D:\\AO\\TsuserverDR'
-
-            VALID_FILE_TYPES_FOLDERS = {
-                'areas': 'config\\area_lists',
-                'music': 'config\\music_lists'
-            }
-
-            stem_path = f'{VALID_FILE_TYPES_FOLDERS[file_type]}\\{filename}'
-            full_path = f'{DIRECTORY}\\{stem_path}'
+            stem_path = f'{guild_details.upload_asset_paths()[file_type]}\\{filename}'
 
             try:
-                with open(full_path, mode='w', encoding='utf-8') as f:
+                with open(f'{directory}\\{stem_path}', mode='w', encoding='utf-8') as f:
                     f.write(content)
             except Exception as e:
                 await ctx.channel.send(

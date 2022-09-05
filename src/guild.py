@@ -30,6 +30,17 @@ class Guild():
         raise NotImplementedError
 
 
+    # Upload
+    def upload_server_paths(self) -> Dict[str, str]:
+        raise NotImplementedError
+
+    def upload_asset_paths(self) -> Dict[str, str]:
+        raise NotImplementedError
+
+    def upload_max_size_bytes(self) -> int:
+        raise NotImplementedError
+
+
     # Role: Bot Muted
     def bot_muted_role_name(self) -> str:
         raise NotImplementedError

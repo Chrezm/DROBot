@@ -42,12 +42,28 @@ class SampleGuild(Guild):
         }
 
 
+    # Upload
+    def upload_server_paths(self) -> Dict[str, str]:
+        return {
+            'main': 'D:\\AO\\TsuserverDR'
+        }
+
+    def upload_asset_paths(self) -> Dict[str, str]:
+        return {
+            'areas': 'config\\area_lists',
+            'music': 'config\\music_lists',
+        }
+
+    def upload_max_size_bytes(self) -> int:
+        return 204800  # 200 Kibibytes
+
+
     # Role: Bot Muted
     def bot_muted_role_name(self) -> str:
-        return 'Muted'
+        return 'muted'
 
     def bot_muted_role_id(self) -> int:
-        return 909500197833416744
+        return 1016481835456397362
 
 
     # Role: RP Active

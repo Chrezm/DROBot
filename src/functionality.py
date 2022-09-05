@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import tempfile
 import discord
 import time
 import calendar
@@ -9,6 +11,7 @@ import random
 import asyncio
 import re
 import requests
+import subprocess
 
 from collections import Counter
 from discord.ext import commands, tasks
@@ -1290,15 +1293,20 @@ class Functionality:
             if not pre_download_valid:
                 return
 
-            download_valid, content = await _upload_check_download(ctx, attachment.url)
+            download_valid, content = (
+                await _upload_check_download(ctx, attachment.url))
             if not download_valid:
+                return
+
+            post_download_valid, output = (
+                await _upload_check_post_download(ctx, file_type, content))
+            if not post_download_valid:
                 return
 
             filename = f'{ctx.author.id % 10000}_{attachment.filename}'
 
             await ctx.channel.send(
                 f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
-            await ctx.channel.send(content)
 
         async def _upload_check_pre_download(
             ctx: commands.Context, server: str,
@@ -1352,14 +1360,15 @@ class Functionality:
         async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str]:
             if not url.startswith('http') and not url.endswith('.yaml'):
                 await ctx.channel.send(
-                    f'Invalid download link generated for `{url}`.'
+                    f'SYSTEM: Invalid download link generated for `{url}`.'
                 )
                 return (False, '')
 
             response = requests.get(url)
             if not response:
                 await ctx.channel.send(
-                    f'Invalid response read for download link generated for `{url}`: `{response}`.'
+                    f'SYSTEM: Invalid response read for download link generated for `{url}`: '
+                    f'`{response}`.'
                 )
                 return (False, '')
 
@@ -1372,4 +1381,54 @@ class Functionality:
                 )
                 return (False, '')
 
+            if not content.strip():
+                return (False, '')
+
             return (True, content)
+
+        async def _upload_check_post_download(ctx: commands.Context, file_type: str,
+                                              content: str) -> Tuple[bool, str]:
+            temp_path = ''
+            output = ''
+
+            try:
+                fd, temp_path = tempfile.mkstemp(suffix='.yaml')
+                with os.fdopen(fd, 'w') as f:
+                    f.write(content)
+
+                DIRECTORY = 'D:\\AO\\TsuserverDR\\server\\validate'
+                command = [
+                    'cd',
+                    DIRECTORY,
+                    '&&',
+                    'python',
+                    f'{file_type}.py',
+                    f'"{temp_path}"'
+                ]
+                p = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                )
+                p.stdin.write(b'n\n\n')
+                raw_output, error = p.communicate()
+                if error:
+                    raise ValueError(f'SYSTEM: {error}')
+
+                output = raw_output.decode('utf-8')
+                lines = output.split('\r\n')
+                if len(lines) < 4:
+                    raise ValueError(f'SYSTEM: Invalid output from checker: {output}.')
+
+                valid = lines[2].endswith('is VALID.')
+                if not valid:
+                    raise ValueError(f'YAML file is not syntactically valid.\r\n{lines[3]}')
+
+                return True, output
+            except Exception as e:
+                await ctx.channel.send(e)
+                return False, output
+            finally:
+                if temp_path:
+                    os.remove(temp_path)

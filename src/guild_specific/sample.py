@@ -57,6 +57,11 @@ class SampleGuild(Guild):
     def upload_max_size_bytes(self) -> int:
         return 204800  # 200 Kibibytes
 
+    def upload_log_channels(self) -> Set[str]:
+        return {
+            'test-2',
+        }
+
 
     # Role: Bot Muted
     def bot_muted_role_name(self) -> str:

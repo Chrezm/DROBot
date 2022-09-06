@@ -231,7 +231,7 @@ class Functionality:
 
         # -- Functions Area -- #
 
-        def _get_channel(name):
+        def _get_channel(name: str) -> discord.TextChannel:
             channel = discord.utils.get(bot.get_all_channels(), name=name)
             if not channel:
                 raise ValueError(f'Target channel {name} not found.')
@@ -1277,10 +1277,19 @@ class Functionality:
         async def upload(ctx: commands.Context, server: str, file_type: str):
             success, msg = await _upload(ctx, server, file_type)
             await ctx.message.delete()
+
             if not msg:
                 return
 
-            await ctx.author.send(msg)
+            str_success = 'successfully uploaded' if success else 'failed to upload'
+            full_message = (
+                f'{str_success} a file of type `{file_type}` to `{server}`.\r\n{msg}\r\n_ _'
+            )
+            await ctx.author.send(full_message[0].upper() + full_message[1:])
+
+            for channel in guild_details.upload_log_channels():
+                to_channel = _get_channel(channel)
+                await to_channel.send(f'<@{ctx.author.id}> {full_message}')
 
 
         async def _upload(ctx: commands.Context, server: str, file_type: str) -> Tuple[bool, str]:
@@ -1344,7 +1353,7 @@ class Functionality:
             if attachment.size > MAX_FILE_SIZE:
                 msg = (
                     f'Expected file size to not exceed `{MAX_FILE_SIZE/1024} KB`, '
-                    f'found the file was `{attachment.size/2048} KB`.'
+                    f'found the file `{attachment.filename}` was `{attachment.size/2048} KB`.'
                 )
                 return (False, None, None, None, msg)
 

@@ -40,6 +40,9 @@ class Guild():
     def upload_max_size_bytes(self) -> int:
         raise NotImplementedError
 
+    def upload_log_channels(self) -> Set[str]:
+        raise NotImplementedError
+
 
     # Role: Bot Muted
     def bot_muted_role_name(self) -> str:

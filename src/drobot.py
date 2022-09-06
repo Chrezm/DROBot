@@ -23,12 +23,12 @@ class DROBot():
         # Production should be True for use in public servers, False for test server
         if production:
             token_file = 'src/guild_specific/dro.token'
-            from src.guild_specific.dro import DRO_discord
-            guild_details = DRO_discord()
+            from src.guild_specific.dro import DROGuild
+            guild_details = DROGuild()
         else:
             token_file = 'src/guild_specific/test.token'
-            from src.guild_specific.test import Test_discord
-            guild_details = Test_discord()
+            from src.guild_specific.test import TestGuild
+            guild_details = TestGuild()
             print('THIS IS A TEST BOT')
 
         try:

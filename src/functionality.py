@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import tempfile
 import discord
 import time
 import calendar
@@ -8,10 +10,15 @@ import string
 import random
 import asyncio
 import re
+import requests
+import subprocess
+
 from collections import Counter
 from discord.ext import commands, tasks
 
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Tuple
+
+from src.guild import Guild
 from src.timezone_list import timezone_list
 
 ban_ids_type = List[Dict[Union[str, Any], Union[str, Any]]]
@@ -108,7 +115,7 @@ def rp_id_check():
 
 
 class Functionality:
-    def __init__(self, bot: commands.Bot = None, guild_details: Dict = None):
+    def __init__(self, bot: commands.Bot = None, guild_details: Guild = None):
         @bot.event
         async def on_ready():
             # This is to start the checks and if said file does not exist, will create one.
@@ -172,17 +179,16 @@ class Functionality:
                 await _msg_update(message.author.id, message.author.name, urls, message.content, message)
 
         async def _check_sent_in_honeypot_channel(message: discord.Message) -> bool:
-            channel_id = 899708230069006407
-            if message.channel.id != channel_id:
+            if message.channel.name not in guild_details.honeypot_channels():
                 return False
 
-            muted_role_id = 909500197833416744
-            muted_role = discord.utils.get(message.author.guild.roles, name="Muted")
+            muted_role = discord.utils.get(message.author.guild.roles,
+                                           name=guild_details.bot_muted_role_name())
             user = message.author
             has_muted_role = False
 
             for role in user.roles:
-                if role.id == muted_role_id:
+                if role.id == guild_details.bot_muted_role_id():
                     has_muted_role = True
 
             if has_muted_role:
@@ -193,8 +199,8 @@ class Functionality:
 
             await _relay_message(
                 message,
-                prefix=guild_details.relaying_prefix,
-                suffix=guild_details.relaying_suffix)
+                prefix=guild_details.relaying_prefix(),
+                suffix=guild_details.relaying_suffix())
 
             await message.delete()
             return True
@@ -211,7 +217,7 @@ class Functionality:
 
         async def _check_sent_in_relaying_channel(message: discord.Message,
                                                   ban_id_: ban_ids_type) -> bool:
-            if message.channel.name not in guild_details.relaying_channels:
+            if message.channel.name not in guild_details.relaying_channels():
                 return False
 
             if await _check_if_banned(message, ban_id_):
@@ -219,13 +225,13 @@ class Functionality:
 
             await _relay_message(
                 message,
-                prefix=guild_details.relaying_prefix,
-                suffix=guild_details.relaying_suffix)
+                prefix=guild_details.relaying_prefix(),
+                suffix=guild_details.relaying_suffix())
             return True
 
         # -- Functions Area -- #
 
-        def _get_channel(name):
+        def _get_channel(name: str) -> discord.TextChannel:
             channel = discord.utils.get(bot.get_all_channels(), name=name)
             if not channel:
                 raise ValueError(f'Target channel {name} not found.')
@@ -235,21 +241,21 @@ class Functionality:
             if ctx.author == bot.user:
                 return False
 
-            if ctx.channel.name in guild_details.command_channels:
+            if ctx.channel.name in guild_details.command_channels():
                 return True
 
             for role in ctx.author.roles:
-                if role.id in guild_details.command_always_accept_from_roles:
+                if role.id in guild_details.command_always_accept_from_roles():
                     return True
 
             return False
 
-        async def _relay_message(message, prefix='', suffix=''):
+        async def _relay_message(message: discord.Message, prefix: str = '', suffix: str = ''):
             for role in message.author.roles:
-                if role.id in guild_details.relaying_ignore_roles:
+                if role.id in guild_details.relaying_ignore_roles():
                     return
 
-            to_channel_name = guild_details.relaying_channels[message.channel.name]
+            to_channel_name = guild_details.relaying_channels()[message.channel.name]
             to_channel = _get_channel(to_channel_name)
 
             user = f'{message.author.name}#{message.author.discriminator} (<@{message.author.id}>)'
@@ -305,8 +311,6 @@ class Functionality:
             return await _msg_counter(_id, user)
 
         async def _msg_counter(_id, person):
-            muted_role_id = 909500197833416744
-
             msgs = msg_check()
             msg_list = list()
 
@@ -318,19 +322,18 @@ class Functionality:
             for k, v in counter.items():
                 if v >= 3:
                     muted_role = discord.utils.get(person.author.guild.roles,
-                                                   name="Muted")
+                                                   name=guild_details.bot_maintainer_role_name())
 
                     user = person.author
                     has_muted_role = False
 
                     for role in user.roles:
-                        if role.id == muted_role_id:
+                        if role.id == guild_details.bot_muted_role_id():
                             has_muted_role = True
 
                     if not has_muted_role:
                         await user.add_roles(muted_role)
                         await person.author.send(f'You are now Muted for spamming reasons.')
-            return
 
         def _ban_profile_check(_id):
             ban_list = ban_id_check()
@@ -424,8 +427,6 @@ class Functionality:
                     if answer >= 0:
                         target = await bot.fetch_user(int(user['discord_id']))
                         await target.send(f'**You are now unbanned from using the Server Bot. Please do not make the same offense again.**')
-
-            return
 
         def _update_rp_list():
             rp_list = rp_id_check()
@@ -696,8 +697,6 @@ class Functionality:
             if not _all:
                 await ctx.send(embed=embed)
 
-            return
-
         @bot.command(
             name='ban_profile_all',
             brief='Returns all ban profiles from all banned or previously banned users.',
@@ -732,8 +731,6 @@ class Functionality:
                 embed.set_footer(text=ctx.author)
 
                 await ctx.send(embed=embed)
-
-            return
 
         @bot.command(
             name='ban_list_update',
@@ -946,8 +943,6 @@ class Functionality:
 
                 await ctx.send(embed=embed)
 
-            return
-
         @bot.command(
             name='rp_change_status',
             brief='Changes RP status.',
@@ -1100,8 +1095,8 @@ class Functionality:
         )
         async def rpactive(ctx: commands.Context):
             await _optin_role(ctx,
-                              guild_details.rp_active_role_name,
-                              guild_details.rp_active_role_id)
+                              guild_details.rp_active_role_name(),
+                              guild_details.rp_active_role_id())
 
         @bot.command(
             name='devtester',
@@ -1113,8 +1108,8 @@ class Functionality:
         )
         async def devtester(ctx: commands.Context):
             await _optin_role(ctx,
-                              guild_details.dev_tester_role_name,
-                              guild_details.dev_tester_role_id)
+                              guild_details.dev_tester_role_name(),
+                              guild_details.dev_tester_role_id())
 
         @bot.command(
             name='timezone',
@@ -1275,3 +1270,203 @@ class Functionality:
         async def unban_error(ctx: commands.Context, error):
             if isinstance(error, commands.BadArgument):
                 return await ctx.send("`Please input <user_id> as integers.`")
+
+        @bot.command(
+            name='upload',
+        )
+        async def upload(ctx: commands.Context, server: str, file_type: str):
+            success, msg = await _upload(ctx, server, file_type)
+            await ctx.message.delete()
+
+            if not msg:
+                return
+
+            str_success = 'successfully uploaded' if success else 'failed to upload'
+            full_message = (
+                f'{str_success} a file of type `{file_type}` to `{server}`.\r\n{msg}\r\n_ _'
+            )
+            await ctx.author.send(full_message[0].upper() + full_message[1:])
+
+            for channel in guild_details.upload_log_channels():
+                to_channel = _get_channel(channel)
+                await to_channel.send(f'<@{ctx.author.id}> {full_message}')
+
+
+        async def _upload(ctx: commands.Context, server: str, file_type: str) -> Tuple[bool, str]:
+            if not _validate_command(ctx):
+                return False, ''
+
+            pre_download_valid, server, file_type, attachment, msg = (
+                await _upload_check_pre_download(ctx, server, file_type))
+            if not pre_download_valid:
+                return False, msg
+
+            download_valid, content, msg = (
+                await _upload_check_download(ctx, attachment.url))
+            if not download_valid:
+                return False, msg
+
+            yaml_valid, output, msg = (
+                await _upload_check_yaml(ctx, server, file_type, content, attachment.filename))
+            if not yaml_valid:
+                return False, msg
+
+            upload_valid, filename, msg = (
+                await _upload_check_upload(ctx, server, file_type, content, attachment.filename))
+            if not upload_valid:
+                return False, msg
+
+            msg = (
+                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: '
+                f'`{filename}`.'
+            )
+            return True, msg
+
+        async def _upload_check_pre_download(
+            ctx: commands.Context, server: str,
+            file_type: str) -> Tuple[bool, str, str, Union[discord.Attachment, None], str]:
+
+            VALID_SERVERS = set(guild_details.upload_server_paths().keys())
+            if server.lower().strip() not in VALID_SERVERS:
+                msg = f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.'
+                return (False, '', '', None, msg)
+            server = server.lower().strip()
+
+            VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
+            if file_type.lower().strip() not in VALID_FILE_TYPES:
+                msg = f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.'
+                return (False, '', '', None, msg)
+            file_type = file_type.lower().strip()
+
+            attachments = ctx.message.attachments
+            if not attachments:
+                msg = 'Expected attachment.'
+                return (False, '', '', None, msg)
+
+            attachment = attachments[0]
+            if not attachment.filename.endswith('.yaml'):
+                msg = f'Expected file extension to be `.yaml`, found `{attachment.filename}`.'
+                return (False, None, None, None, msg)
+
+            MAX_FILE_SIZE = guild_details.upload_max_size_bytes()
+
+            if attachment.size > MAX_FILE_SIZE:
+                msg = (
+                    f'Expected file size to not exceed `{MAX_FILE_SIZE/1024} KB`, '
+                    f'found the file `{attachment.filename}` was `{attachment.size/2048} KB`.'
+                )
+                return (False, None, None, None, msg)
+
+            return (True, server, file_type, attachment, '')
+
+        async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str, str]:
+            if not url.startswith('http') and not url.endswith('.yaml'):
+                msg = f'SYSTEM: Invalid download link generated for `{url}`.'
+                return (False, '', msg)
+
+            response = requests.get(url)
+            if not response:
+                msg = (
+                    f'SYSTEM: Invalid response read for download link generated for `{url}`: '
+                    f'`{response}`.'
+                )
+                return (False, '', msg)
+
+            raw_content = response.content
+            try:
+                content = raw_content.decode('utf-8')
+            except UnicodeDecodeError as exc:
+                msg = f'Invalid UTF-8 file read for download link generated for `{url}`: `{exc}`.'
+                return (False, '', msg)
+
+            if not content.strip():
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
+
+            return (True, content, '')
+
+        async def _upload_check_yaml(ctx: commands.Context, server: str, file_type: str,
+                                     content: str,
+                                     original_filename: str) -> Tuple[bool, str, str]:
+            if not content.strip():
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
+
+            temp_path = ''
+            output = ''
+
+            try:
+                fd, temp_path = tempfile.mkstemp(suffix='.yaml')
+                with os.fdopen(fd, 'w') as f:
+                    f.write(content)
+
+                command = [
+                    'cd',
+                    f'{guild_details.upload_server_paths()[server]}\\server\\validate',
+                    '&&',
+                    'python',
+                    f'{file_type}.py',
+                    f'"{temp_path}"'
+                ]
+                p = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                )
+                p.stdin.write(b'n\n\n')
+                raw_output, raw_error = p.communicate()
+                if raw_error:
+                    error = raw_error.decode('utf-8')
+                    raise ValueError(f'SYSTEM: Checker raised an error: {error}')
+
+                output = raw_output.decode('utf-8')
+                lines = output.split('\r\n')
+                if len(lines) < 4:
+                    raise ValueError(f'SYSTEM: Invalid output from checker: {output}.')
+
+                valid = lines[2].endswith('is VALID.')
+                if not valid:
+                    raise ValueError(
+                        f'`{file_type}` YAML file `{original_filename}` is not syntactically '
+                        f'valid.\r\n{lines[3]}')
+
+                return True, output, ''
+            except Exception as e:
+                return False, output, e
+            finally:
+                if temp_path:
+                    os.remove(temp_path)
+
+        async def _upload_check_upload(ctx: commands.Context, server: str, file_type: str,
+                                       content: str,
+                                       original_filename: str) -> Tuple[bool, str, str]:
+            if not content.strip():
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
+
+            VALID_SERVERS = set(guild_details.upload_server_paths().keys())
+            if server.lower().strip() not in VALID_SERVERS:
+                msg = f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.'
+                return False, '', msg
+            server = server.lower().strip()
+
+            VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
+            if file_type.lower().strip() not in VALID_FILE_TYPES:
+                msg = f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.'
+                return False, '', msg
+            file_type = file_type.lower().strip()
+
+            directory = guild_details.upload_server_paths()[server]
+
+            filename = f'{ctx.author.id % 10000}_{original_filename}'
+            stem_path = f'{guild_details.upload_asset_paths()[file_type]}\\{filename}'
+
+            try:
+                with open(f'{directory}\\{stem_path}', mode='w', encoding='utf-8') as f:
+                    f.write(content)
+            except Exception as e:
+                msg = 'SYSTEM: Error while saving to path {stem_path}: {e}'
+                return False, '', msg
+
+            return True, filename, ''

@@ -1415,9 +1415,10 @@ class Functionality:
                     stdout=subprocess.PIPE,
                 )
                 p.stdin.write(b'n\n\n')
-                raw_output, error = p.communicate()
-                if error:
-                    raise ValueError(f'SYSTEM: {error}')
+                raw_output, raw_error = p.communicate()
+                if raw_error:
+                    error = raw_error.decode('utf-8')
+                    raise ValueError(f'SYSTEM: Checker raised an error: {error}')
 
                 output = raw_output.decode('utf-8')
                 lines = output.split('\r\n')

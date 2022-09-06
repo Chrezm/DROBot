@@ -1275,111 +1275,113 @@ class Functionality:
             name='upload',
         )
         async def upload(ctx: commands.Context, server: str, file_type: str):
-            await _upload(ctx, server, file_type)
+            success, msg = await _upload(ctx, server, file_type)
             await ctx.message.delete()
-
-        async def _upload(ctx: commands.Context, server: str, file_type: str):
-            if not _validate_command(ctx):
+            if not msg:
                 return
 
-            pre_download_valid, server, file_type, attachment = (
+            await ctx.author.send(msg)
+
+
+        async def _upload(ctx: commands.Context, server: str, file_type: str) -> Tuple[bool, str]:
+            if not _validate_command(ctx):
+                return False, ''
+
+            pre_download_valid, server, file_type, attachment, msg = (
                 await _upload_check_pre_download(ctx, server, file_type))
             if not pre_download_valid:
-                return
+                return False, msg
 
-            download_valid, content = (
+            download_valid, content, msg = (
                 await _upload_check_download(ctx, attachment.url))
             if not download_valid:
-                return
+                return False, msg
 
-            yaml_valid, output = (
-                await _upload_check_yaml(ctx, server, file_type, content))
+            yaml_valid, output, msg = (
+                await _upload_check_yaml(ctx, server, file_type, content, attachment.filename))
             if not yaml_valid:
-                return
+                return False, msg
 
-            upload_valid, filename = (
+            upload_valid, filename, msg = (
                 await _upload_check_upload(ctx, server, file_type, content, attachment.filename))
             if not upload_valid:
-                return
+                return False, msg
 
-            await ctx.message.author.send(
-                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: `{filename}`.')
+            msg = (
+                f'Uploaded {file_type} `{attachment.filename}` to {server} with name: '
+                f'`{filename}`.'
+            )
+            return True, msg
 
         async def _upload_check_pre_download(
             ctx: commands.Context, server: str,
-            file_type: str) -> Tuple[bool, str, str, Union[discord.Attachment, None]]:
+            file_type: str) -> Tuple[bool, str, str, Union[discord.Attachment, None], str]:
 
             VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
-                await ctx.message.author.send(
-                    f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
-                return (False, '', '', None)
+                msg = f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.'
+                return (False, '', '', None, msg)
             server = server.lower().strip()
 
             VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
             if file_type.lower().strip() not in VALID_FILE_TYPES:
-                await ctx.message.author.send(
-                    f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
-                return (False, '', '', None)
+                msg = f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.'
+                return (False, '', '', None, msg)
             file_type = file_type.lower().strip()
 
             attachments = ctx.message.attachments
             if not attachments:
-                await ctx.message.author.send('Expected attachment.')
-                return (False, '', '', None)
+                msg = 'Expected attachment.'
+                return (False, '', '', None, msg)
 
             attachment = attachments[0]
             if not attachment.filename.endswith('.yaml'):
-                await ctx.message.author.send(
-                    f'Expected file extension to be `.yaml`, '
-                    f'found `{attachment.filename}`.'
-                )
-                return (False, None, None, None)
+                msg = f'Expected file extension to be `.yaml`, found `{attachment.filename}`.'
+                return (False, None, None, None, msg)
 
             MAX_FILE_SIZE = guild_details.upload_max_size_bytes()
 
             if attachment.size > MAX_FILE_SIZE:
-                await ctx.message.author.send(
+                msg = (
                     f'Expected file size to not exceed `{MAX_FILE_SIZE/1024} KB`, '
                     f'found the file was `{attachment.size/2048} KB`.'
                 )
-                return (False, None, None, None)
+                return (False, None, None, None, msg)
 
-            return (True, server, file_type, attachment)
+            return (True, server, file_type, attachment, '')
 
-        async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str]:
+        async def _upload_check_download(ctx: commands.Context, url: str) -> Tuple[bool, str, str]:
             if not url.startswith('http') and not url.endswith('.yaml'):
-                await ctx.message.author.send(
-                    f'SYSTEM: Invalid download link generated for `{url}`.'
-                )
-                return (False, '')
+                msg = f'SYSTEM: Invalid download link generated for `{url}`.'
+                return (False, '', msg)
 
             response = requests.get(url)
             if not response:
-                await ctx.message.author.send(
+                msg = (
                     f'SYSTEM: Invalid response read for download link generated for `{url}`: '
                     f'`{response}`.'
                 )
-                return (False, '')
+                return (False, '', msg)
 
             raw_content = response.content
             try:
                 content = raw_content.decode('utf-8')
             except UnicodeDecodeError as exc:
-                await ctx.message.author.send(
-                    f'Invalid UTF-8 file read for download link generated for `{url}`: `{exc}`.'
-                )
-                return (False, '')
+                msg = f'Invalid UTF-8 file read for download link generated for `{url}`: `{exc}`.'
+                return (False, '', msg)
 
             if not content.strip():
-                return (False, '')
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
 
-            return (True, content)
+            return (True, content, '')
 
         async def _upload_check_yaml(ctx: commands.Context, server: str, file_type: str,
-                                     content: str) -> Tuple[bool, str]:
+                                     content: str,
+                                     original_filename: str) -> Tuple[bool, str, str]:
             if not content.strip():
-                return False, ''
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
 
             temp_path = ''
             output = ''
@@ -1416,33 +1418,33 @@ class Functionality:
                 valid = lines[2].endswith('is VALID.')
                 if not valid:
                     raise ValueError(
-                        f'`{file_type}` YAML file is not syntactically valid.\r\n{lines[3]}')
+                        f'`{file_type}` YAML file `{original_filename}` is not syntactically '
+                        f'valid.\r\n{lines[3]}')
 
-                return True, output
+                return True, output, ''
             except Exception as e:
-                await ctx.message.author.send(e)
-                return False, output
+                return False, output, e
             finally:
                 if temp_path:
                     os.remove(temp_path)
 
         async def _upload_check_upload(ctx: commands.Context, server: str, file_type: str,
-                                       content: str, original_filename: str) -> Tuple[bool, str]:
+                                       content: str,
+                                       original_filename: str) -> Tuple[bool, str, str]:
             if not content.strip():
-                return False, ''
+                msg = 'Expected non-empty content, found no content.'
+                return (False, '', msg)
 
             VALID_SERVERS = set(guild_details.upload_server_paths().keys())
             if server.lower().strip() not in VALID_SERVERS:
-                await ctx.message.author.send(
-                    f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.')
-                return False, ''
+                msg = f'Expected server be one of `{VALID_SERVERS}`, found `{server}`.'
+                return False, '', msg
             server = server.lower().strip()
 
             VALID_FILE_TYPES = set(guild_details.upload_asset_paths().keys())
             if file_type.lower().strip() not in VALID_FILE_TYPES:
-                await ctx.message.author.send(
-                    f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.')
-                return False, ''
+                msg = f'Expected file type be one of `{VALID_FILE_TYPES}`, found `{file_type}`.'
+                return False, '', msg
             file_type = file_type.lower().strip()
 
             directory = guild_details.upload_server_paths()[server]
@@ -1454,9 +1456,7 @@ class Functionality:
                 with open(f'{directory}\\{stem_path}', mode='w', encoding='utf-8') as f:
                     f.write(content)
             except Exception as e:
-                await ctx.message.author.send(
-                    f'SYSTEM: Error while saving to path {stem_path}: {e}'
-                )
-                return False, ''
+                msg = 'SYSTEM: Error while saving to path {stem_path}: {e}'
+                return False, '', msg
 
-            return True, filename
+            return True, filename, ''

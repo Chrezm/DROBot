@@ -1466,7 +1466,7 @@ class Functionality:
                 with open(f'{directory}\\{stem_path}', mode='w', encoding='utf-8') as f:
                     f.write(content)
             except Exception as e:
-                msg = 'SYSTEM: Error while saving to path {stem_path}: {e}'
+                msg = f'SYSTEM: Error while saving to path {stem_path}: `{e}`'
                 return False, '', msg
 
             return True, filename, ''

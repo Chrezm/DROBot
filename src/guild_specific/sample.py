@@ -52,6 +52,8 @@ class SampleGuild(Guild):
         return {
             'areas': 'config\\area_lists',
             'music': 'config\\music_lists',
+            'backgrounds': 'config\\background_lists',
+            'characters': 'config\\character_lists',
         }
 
     def upload_max_size_bytes(self) -> int:

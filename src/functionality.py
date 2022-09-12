@@ -1427,9 +1427,11 @@ class Functionality:
 
                 valid = lines[2].endswith('is VALID.')
                 if not valid:
+                    error = "\r\n".join(lines[3:-4])
                     raise ValueError(
                         f'`{file_type}` YAML file `{original_filename}` is not syntactically '
-                        f'valid.\r\n{lines[3]}')
+                        f'valid.\r\n{error}'
+                        )
 
                 return True, output, ''
             except Exception as e:

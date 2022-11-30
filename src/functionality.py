@@ -322,7 +322,7 @@ class Functionality:
             for k, v in counter.items():
                 if v >= 3:
                     muted_role = discord.utils.get(person.author.guild.roles,
-                                                   name=guild_details.bot_maintainer_role_name())
+                                                   name=guild_details.bot_muted_role_name())
 
                     user = person.author
                     has_muted_role = False
